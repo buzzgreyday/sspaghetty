@@ -3,10 +3,12 @@ Sspaghetti is easy; a Digital Ocean CLI based bash automation script for automat
 
 ## Install
 1. Download the sspaghetti
-2. Create an API access token on DO
-3. Install
+2. Make executable
+   `chmod +x spaghetti`
+3. Create an API access token on DO
+4. Install
    `sspaghetti install`
-4. Connect
+5. Connect
    `sspaghetti connect`
 
 The script will encode the API access token for safe usage and remember your connection values.

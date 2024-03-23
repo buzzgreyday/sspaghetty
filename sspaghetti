@@ -271,11 +271,18 @@ case "${1}" in
 	fi
 	;;
 "connect")
-	request_ssh_pass
-	authenticate_doctl
-	check_ip
-	connect
-	unset SSH_PASSWD
+	if check_network_connection; then
+		request_ssh_pass
+		authenticate_doctl
+		check_ip
+		connect
+		unset SSH_PASSWD
+	else
+		echo "> NO INTERNET CONNECTION!"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
 	;;
 *)
 	echo "> NOT A VALID COMMAND"

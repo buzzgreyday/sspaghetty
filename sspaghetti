@@ -1,0 +1,284 @@
+#!/bin/bash
+
+TMP_DIR="$HOME/.tmp"
+IP_FILE="$HOME/.tmp/last_ip.txt"
+DOCTL_DOWNLOAD_FILE="$HOME/doctl"
+INSTALL_LOC="/usr/local/bin"
+DO_NODE_SCRIPT_HOME="$HOME/.node"
+DO_TOKEN_FILE="$DO_NODE_SCRIPT_HOME/auth_token.enc"
+
+encode() {
+	echo "> ENCODING DIGITAL OCEAN AUTHORIZATION TOKEN"
+	if ! openssl enc -aes-256-cbc -salt -pbkdf2 -out "$DO_NODE_SCRIPT_HOME/auth_token.enc" -pass pass:"$2" <<<"$1"; then
+		echo "> ENCODING FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	echo "  ENCODING COMPLETE!"
+	echo
+}
+
+decode() {
+	echo "> DECODING DIGITAL OCEAN AUTHORIZATION TOKEN"
+	if ! DO_TOKEN=$(openssl enc -d -aes-256-cbc -in "$DO_NODE_SCRIPT_HOME/auth_token.enc" -salt -pbkdf2 -pass pass:"$1"); then
+		echo "> DECODING FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	echo "  DECODING COMPLETE!"
+	echo
+}
+
+authenticate_doctl() {
+	if [ -f "$DO_TOKEN_FILE" ]; then
+		decode $SSH_PASSWD
+	fi
+	if [ -n "$DO_TOKEN" ]; then
+		echo "> DIGITAL OCEAN AUTHORIZATION TOKEN VERIFICATION"
+		echo
+	else
+		echo "> NO DIGITAL OCEAN AUTHORIZATION TOKEN FOUND!"
+		read -p "  AUTHORIZATION TOKEN: " -s DO_TOKEN
+		echo
+		encode "$DO_TOKEN" "$SSH_PASSWD"
+		decode $SSH_PASSWD
+	fi
+	remove_cli_authorization
+	unset $DO_TOKEN
+}
+
+whitelist() {
+	# Update firewall with CURRENT_IP using doctl
+	if ! FIREWALL_DATA=$(doctl compute firewall list); then
+		echo "> FIREWALL DATA REQUEST FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
+	FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
+	if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:"$DROPLET_SSH_PORT",address:"$1"/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" &>/dev/null; then
+		echo "> FIREWALL UPDATE FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	remove_cli_authorization
+}
+
+check_ip() {
+	if check_network_connection; then
+		# Fetch current IP address
+		if ! CURRENT_IP=$(curl -s http://ipv4.icanhazip.com/); then
+			echo "> OBTAINING IP FAILED"
+			echo "  EXITING..."
+			echo
+			exit 1
+		fi
+	else
+		echo "> NO INTERNET CONNECTION!"
+		echo "  COULD NOT RETRIEVE YOUR CURRENT IP. EXITING..."
+		echo
+		exit 1
+	fi
+	if [ ! -d "$TMP_DIR" ]; then
+		mkdir "$TMP_DIR"
+	fi
+	if [ -f "$IP_FILE" ]; then
+		# Read last known IP from file
+		LAST_IP=$(cat "$IP_FILE")
+		# Compare current IP with last known IP
+		if [ "$CURRENT_IP" != "$LAST_IP" ]; then
+			echo "> IP HAS CHANGED"
+			echo "  UPDATING FIREWALL RULES..."
+			echo
+			whitelist $CURRENT_IP
+			# If succesful update the last IP file
+			echo "$CURRENT_IP" >"$IP_FILE"
+		else
+			echo "> IP REMAINS UNCHANGED"
+			echo "  CONTINUING WITHOUT UPDATING FIREWALL RULES..."
+			echo
+			remove_cli_authorization
+		fi
+	else
+		echo "> SAVING CURRENT IP"
+		echo "$CURRENT_IP" >"$IP_FILE"
+		echo "  UPDATING FIREWALL RULES..."
+		echo
+		whitelist $CURRENT_IP
+	fi
+}
+
+check_network_connection() {
+	if ping -c 1 8.8.8.8 &>/dev/null; then
+		return 0 # Success
+	else
+		return 1 # Failure
+	fi
+}
+
+obtain_superuser_permissions() {
+	echo "> OBTAIN SUPERUSER PERMISSIONS"
+	sudo ls /root &>/dev/null
+	echo
+}
+
+request_ssh_pass() {
+	echo "> SSH IDENTITY PASSWORD:"
+	read -p "  " -s SSH_PASSWD
+	echo
+}
+
+remove_cli_authorization() {
+	if ! doctl auth remove --context default &>/dev/null; then
+		echo "> AUTHORIZATION REMOVAL FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+
+}
+
+install_cli() {
+	if [ ! -d "$DO_NODE_SCRIPT_HOME" ]; then
+		sudo mkdir -p "$DO_NODE_SCRIPT_HOME"
+	fi
+	echo "> DOWNLOADING DIGITAL OCEAN CLI"
+	if ! LATEST_DOCL_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
+		echo "> DIGITAL OCEAN CLI VERSION REQUEST FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	if ! cd "$HOME" && $(wget -q "$LATEST_DOCL_VERSION") &>/dev/null; then
+		echo "> DIGITAL OCEAN CLI DOWNLOAD FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	echo "> INSTALLING DIGITAL OCEAN CLI"
+	echo
+	if ! tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
+		echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	obtain_superuser_permissions
+	sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
+	sudo chmod +x "$INSTALL_LOC/doctl"
+	rm "$(basename "$LATEST_DOCL_VERSION")"
+	request_ssh_pass
+	authenticate_doctl
+	unset SSH_PASSWD
+	node_values
+	remove_cli_authorization
+	echo "> INSTALLATION/UPDATE COMPLETE!"
+	echo
+}
+
+uninstall() {
+	echo "> UNINSTALLING DIGITAL OCEAN NODE SCRIPT"
+	echo "  REMOVING STORED IP DATA"
+	rm -f "$IP_FILE"
+	echo "  REMOVING DIGITAL OCEAN CLI INSTALLATION"
+	echo
+	remove_cli_authorization
+	obtain_superuser_permissions
+	sudo rm -f "$INSTALL_LOC/doctl"
+	sudo rm -rf "$DO_NODE_SCRIPT_HOME"
+	echo "> UNINSTALL COMPLETE!"
+	echo
+	exit 0
+}
+
+node_values() {
+	if [ -f "$DO_NODE_SCRIPT_HOME/node_ip.txt" ]; then
+		DROPLET_IP=$(cat "$DO_NODE_SCRIPT_HOME/node_ip.txt")
+	fi
+	if [ -f "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
+		DROPLET_SSH_PORT=$(cat "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt")
+	fi
+	if [ -f "$DO_NODE_SCRIPT_HOME/node_ssh_id.txt" ]; then
+		DROPLET_SSH_ID=$(cat "$DO_NODE_SCRIPT_HOME/node_ssh_id.txt")
+	fi
+	if [ -f "$DO_NODE_SCRIPT_HOME/node_user.txt" ]; then
+		DROPLET_USER=$(cat "$DO_NODE_SCRIPT_HOME/node_user.txt")
+	fi
+	if [ ! -n "$DROPLET_IP" ]; then
+		obtain_superuser_permissions
+		echo "> NO NODE IP SET"
+		read -p "  NODE IP: " DROPLET_IP
+		echo
+		echo "$DROPLET_IP" | sudo tee "$DO_NODE_SCRIPT_HOME/node_ip.txt" &>/dev/null
+	fi
+	if [ ! -n "$DROPLET_SSH_PORT" ]; then
+		obtain_superuser_permissions
+		echo "> NO NODE SSH PORT SET"
+		read -p "  NODE SSH PORT: " DROPLET_SSH_PORT
+		echo
+		echo "$DROPLET_SSH_PORT" | sudo tee "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt" &>/dev/null
+	fi
+	if [ ! -n "$DROPLET_SSH_ID" ]; then
+		obtain_superuser_permissions
+		echo "> NO NODE SSH IDENTITY FILE PATH SET"
+		read -p "  FULL PATH TO SSH IDENTITY FILE ["$HOME"/.ssh/id_rsa]: " DROPLET_SSH_ID
+		echo
+		echo "$DROPLET_SSH_ID" | sudo tee "$DO_NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
+	fi
+	if [ ! -n "$DROPLET_USER" ]; then
+		obtain_superuser_permissions
+		echo "> NO NODE USERNAME SET"
+		read -p "  NODE USERNAME [nodeadmin]: " DROPLET_USER
+		echo
+		echo "$DROPLET_USER" | sudo tee "$DO_NODE_SCRIPT_HOME/node_user.txt" &>/dev/null
+	fi
+}
+
+connect() {
+	node_values
+	if ! ssh -P "$SSH_PASSWD" -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT" &>/dev/null; then
+		echo "> SSH CONNECTION FAILED!"
+		echo "  COMMAND: ssh -P "$SSH_PASSWD" -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT""
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+}
+
+cat <<EOF
+  ###########################################
+  # SSPAGHETTI DIGITAL OCEAN NODE CONNECTOR #
+  ###########################################
+
+  By hgtp_Michael
+  -------------------------------------------
+EOF
+
+case "${1}" in
+"uninstall") uninstall ;;
+"install")
+	if check_network_connection; then
+		install_cli
+	else
+		echo "> NO INTERNET CONNECTION!"
+		echo "  EXITING..."
+		echo
+		exit 1
+	fi
+	;;
+"connect")
+	request_ssh_pass
+	authenticate_doctl
+	check_ip
+	connect
+	unset SSH_PASSWD
+	;;
+*)
+	echo "> NOT A VALID COMMAND"
+	echo
+	;;
+esac

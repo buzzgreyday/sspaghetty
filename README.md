@@ -11,6 +11,9 @@ Sspaghetti is easy; a Digital Ocean CLI based bash automation script for automat
 
 The script will encode the API access token for safe usage and remember your connection values.
 
+## Connect
+1. Connect `sspaghetti connect`
+
 ## Update
 1. Reinstall
    `sspaghetti install`

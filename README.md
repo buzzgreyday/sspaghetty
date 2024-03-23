@@ -1,0 +1,2 @@
+# SSpagHetti
+Automation bash script

@@ -1,4 +1,4 @@
-# Sspaghetti
+# Sspaghetti 🍝
 Sspaghetti is easy; a Digital Ocean CLI based bash automation script for automatic firewall whitelisting of IPs and ports (when your IP changes).
 
 ## Install

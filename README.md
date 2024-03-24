@@ -16,6 +16,8 @@ The script will encode the API access token for safe usage and remember your con
 ## Connect
 1. Connect `sspaghetti connect`
 
+The script will check if your IP has changed and automatically whitelist the new IP in you DO firewall.
+
 ## Update
 1. Reinstall
    `sspaghetti install`

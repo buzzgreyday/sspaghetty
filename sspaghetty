@@ -9,7 +9,7 @@ DO_TOKEN_FILE="$DO_NODE_SCRIPT_HOME/auth_token.enc"
 
 encode() {
 	echo "> ENCODING DIGITAL OCEAN AUTHORIZATION TOKEN"
-	if ! openssl enc -aes-256-cbc -salt -pbkdf2 -out "$DO_NODE_SCRIPT_HOME/auth_token.enc" -pass pass:"$2" <<<"$1"; then
+	if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$DO_NODE_SCRIPT_HOME/auth_token.enc" -pass pass:"$2" <<<"$1"; then
 		echo "> ENCODING FAILED"
 		echo "  EXITING..."
 		echo

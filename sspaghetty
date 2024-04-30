@@ -155,7 +155,7 @@ install_cli() {
 		echo
 		exit 1
 	fi
-	if ! cd "$HOME" && $(wget -q "$LATEST_DOCL_VERSION") &>/dev/null; then
+	if ! $(wget -q "$HOME/$LATEST_DOCL_VERSION") &>/dev/null; then
 		echo "> DIGITAL OCEAN CLI DOWNLOAD FAILED"
 		echo "  EXITING..."
 		echo
@@ -163,16 +163,16 @@ install_cli() {
 	fi
 	echo "> INSTALLING DIGITAL OCEAN CLI"
 	echo
-	if ! cd "$HOME" && tar xf $(basename "$LATEST_DOCL_VERSION") >/dev/null; then
+	if ! tar xf "$(basename "$HOME/$LATEST_DOCL_VERSION")" >/dev/null; then
 		echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
 		echo "  EXITING..."
 		echo
 		exit 1
 	fi
 	obtain_superuser_permissions
-	cd "$HOME" && sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
-	cd "$HOME" && sudo chmod +x "$INSTALL_LOC/doctl"
-	cd "$HOME" && rm "$(basename "$LATEST_DOCL_VERSION")"
+	sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
+	sudo chmod +x "$INSTALL_LOC/doctl"
+	rm "$(basename "$HOME/$LATEST_DOCL_VERSION")"
 	request_ssh_pass
 	authenticate_doctl
 	unset SSH_PASSWD

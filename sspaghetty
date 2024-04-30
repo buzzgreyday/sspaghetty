@@ -155,7 +155,7 @@ install_cli() {
 		echo
 		exit 1
 	fi
-	if ! $(wget -q "$TMP_DIR") &>/dev/null; then
+	if ! $(wget -q "$LATEST_DOCL_VERSION") &>/dev/null; then
 		echo "> DIGITAL OCEAN CLI DOWNLOAD FAILED"
 		echo "  EXITING..."
 		echo

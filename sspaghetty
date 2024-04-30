@@ -163,7 +163,7 @@ install_cli() {
 	fi
 	echo "> INSTALLING DIGITAL OCEAN CLI"
 	echo
-	if ! tar xf "$(basename "$TMP_DIR")" >/dev/null; then
+	if ! tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
 		echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
 		echo "  EXITING..."
 		echo
@@ -172,7 +172,7 @@ install_cli() {
 	obtain_superuser_permissions
 	sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
 	sudo chmod +x "$INSTALL_LOC/doctl"
-	rm "$(basename "$TMP_DIR")"
+	rm "$(basename "$LATEST_DOCL_VERSION")"
 	request_ssh_pass
 	authenticate_doctl
 	unset SSH_PASSWD

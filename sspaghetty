@@ -253,7 +253,7 @@ connect() {
 
 cat <<EOF
   ###########################################
-  # SSPAGHETTI DIGITAL OCEAN NODE CONNECTOR #
+  # SSPAGHETTY DIGITAL OCEAN NODE CONNECTOR #
   ###########################################
 
   By hgtp_Michael

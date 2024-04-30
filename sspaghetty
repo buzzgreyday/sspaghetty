@@ -163,7 +163,7 @@ install_cli() {
 	fi
 	echo "> INSTALLING DIGITAL OCEAN CLI"
 	echo
-	if ! cd "$HOME" && tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
+	if ! cd "$HOME" && tar xf $(basename "$LATEST_DOCL_VERSION") >/dev/null; then
 		echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
 		echo "  EXITING..."
 		echo

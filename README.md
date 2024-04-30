@@ -16,7 +16,7 @@ The script will encode the API access token for safe usage and remember your con
 
 The script will check if your IP has changed and automatically whitelist the new IP in you DO firewall.
 
-## Update
+## Update IP, etc.
 1. Reinstall
    `sspaghetty install`
 

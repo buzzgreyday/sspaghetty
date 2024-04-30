@@ -44,6 +44,7 @@ authenticate_doctl() {
 		echo
 		encode "$DO_TOKEN" "$SSH_PASSWD"
 		decode $SSH_PASSWD
+		doctl auth init -t "$DO_TOKEN"
 	fi
 	remove_cli_authorization
 	unset $DO_TOKEN
@@ -161,16 +162,16 @@ install_cli() {
 	fi
 	echo "> INSTALLING DIGITAL OCEAN CLI"
 	echo
-	if ! tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
+	if ! cd "$HOME" && tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
 		echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
 		echo "  EXITING..."
 		echo
 		exit 1
 	fi
 	obtain_superuser_permissions
-	sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
-	sudo chmod +x "$INSTALL_LOC/doctl"
-	rm "$(basename "$LATEST_DOCL_VERSION")"
+	cd "$HOME" && sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
+	cd "$HOME" && sudo chmod +x "$INSTALL_LOC/doctl"
+	cd "$HOME" && rm "$(basename "$LATEST_DOCL_VERSION")"
 	request_ssh_pass
 	authenticate_doctl
 	unset SSH_PASSWD
@@ -250,9 +251,9 @@ connect() {
 }
 
 cat <<EOF
-  #######################################################
-  # SSPAGHETTY (AUTOMATED DIGITAL OCEAN NODE CONNECTOR) #
-  #######################################################
+  ###########################################
+  # SSPAGHETTI DIGITAL OCEAN NODE CONNECTOR #
+  ###########################################
 
   By hgtp_Michael
   -------------------------------------------

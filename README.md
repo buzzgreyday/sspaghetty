@@ -5,8 +5,9 @@ Sspaghetty is a Digital Ocean CLI based bash automation script for automatic fir
 1. Download the sspaghetty
 2. Make executable
    `chmod +x spaghetty`
-3. Create an API access token on DO
-4. Install
+3. Install `sshpass`
+4. Create an API access token on DO
+5. Install
    `sspaghetty install`
 
 The script will encode the API access token for safe usage and remember your connection values.

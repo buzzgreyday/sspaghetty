@@ -242,9 +242,10 @@ node_values() {
 
 connect() {
 	node_values
-	if ! sshpass -p "$SSH_PASSWD" ssh -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT"; then
+	if ! expect -c "spawn ssh -i \"$DROPLET_SSH_ID\" \"$DROPLET_USER\"@\"$DROPLET_IP\" -p \"$DROPLET_SSH_PORT\";expect \"Enter passphrase\";send \"$SSH_PASSWD\r\";interact"; then
+	# if ! sshpass -p "$SSH_PASSWD" ssh -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT"; then
+	# Ssh identity doesn't seem to work with sshpass
 		echo "> SSH CONNECTION FAILED!"
-		echo "  COMMAND: sshpass -p "$SSH_PASSWD" ssh -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT""
 		echo "  EXITING..."
 		echo
 		exit 1

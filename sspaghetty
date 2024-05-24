@@ -192,6 +192,7 @@ uninstall() {
 	obtain_superuser_permissions
 	sudo rm -f "$INSTALL_LOC/doctl"
 	sudo rm -rf "$DO_NODE_SCRIPT_HOME"
+	sudo apt remove expect
 	echo "> UNINSTALL COMPLETE!"
 	echo
 	exit 0

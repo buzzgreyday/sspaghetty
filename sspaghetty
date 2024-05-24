@@ -177,6 +177,7 @@ install_cli() {
 	unset SSH_PASSWD
 	node_values
 	remove_cli_authorization
+	sudo apt install expect
 	echo "> INSTALLATION/UPDATE COMPLETE!"
 	echo
 }
@@ -278,7 +279,7 @@ cat <<EOF
   # SSPAGHETTY DIGITAL OCEAN NODE CONNECTOR #
   ###########################################
 
-  v0.2 by hgtp_Michael (buzzgreyday)
+  v0.3 by hgtp_Michael (buzzgreyday)
   -------------------------------------------
 EOF
 

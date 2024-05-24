@@ -239,9 +239,31 @@ node_values() {
 	fi
 }
 
+# Function to escape special characters in a string
+escape_string() {
+  local input="$1"
+  local escaped=""
+
+  # Iterate over each character in the string
+  for (( i=0; i<${#input}; i++ )); do
+    char="${input:i:1}"
+    case "$char" in
+      '!'|'$'|'&'|'*'|'('|')'|'['|']'|'{'|'}'|'\\')
+        escaped+="\\$char"
+        ;;
+      *)
+        escaped+="$char"
+        ;;
+    esac
+  done
+
+  echo "$escaped"
+}
+
 connect() {
 	node_values
-	if ! expect -c "spawn ssh -i ${DROPLET_SSH_ID} ${DROPLET_USER}@${DROPLET_IP} -p ${DROPLET_SSH_PORT};expect \"Enter passphrase\";send \'${SSH_PASSWD}\r\';interact"; then
+	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
+	if ! expect -c "spawn ssh -i ${DROPLET_SSH_ID} ${DROPLET_USER}@${DROPLET_IP} -p ${DROPLET_SSH_PORT};expect \"Enter passphrase\";send \"${SSH_PASSWD}\r\";interact"; then
 	# if ! sshpass -p "$SSH_PASSWD" ssh -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT"; then
 	# Ssh identity doesn't seem to work with sshpass
 		echo "> SSH CONNECTION FAILED!"

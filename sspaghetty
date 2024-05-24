@@ -302,6 +302,7 @@ case "${1}" in
 		check_ip
 		connect
 		unset SSH_PASSWD
+		remove_cli_authorization
 	else
 		echo "> NO INTERNET CONNECTION!"
 		echo "  EXITING..."

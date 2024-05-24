@@ -47,7 +47,6 @@ authenticate_doctl() {
 		decode $SSH_PASSWD
 		doctl auth init -t "$DO_TOKEN"
 	fi
-	remove_cli_authorization
 	unset $DO_TOKEN
 }
 
@@ -257,7 +256,7 @@ cat <<EOF
   # SSPAGHETTY DIGITAL OCEAN NODE CONNECTOR #
   ###########################################
 
-  v0.1 by hgtp_Michael (buzzgreyday)
+  v0.2 by hgtp_Michael (buzzgreyday)
   -------------------------------------------
 EOF
 

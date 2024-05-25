@@ -12,6 +12,8 @@ F_BOLD="\033[1m"
 F_UNDERLINED="\033[4m"
 C_INDIANRED1="\033[38;5;203m"
 C_DEEPSKYBLUE3="\033[38;5;32m"
+C_YELLOW1="\033[38;5;226m"
+C_CHARTREUSE3="\033[38;5;76m"
 
 # Function to display a rainbow shift animation
 rainbow_shift() {
@@ -38,24 +40,24 @@ rainbow_shift() {
 encode() {
 	echo "> ENCODING DIGITAL OCEAN AUTHORIZATION TOKEN"
 	if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$DO_NODE_SCRIPT_HOME/auth_token.enc" -pass pass:"$2" <<<"$1"; then
-		echo "> ENCODING FAILED"
-		echo "  EXITING..."
-		echo
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED${NO_FORMAT}"
+		echo "  ${C_INDIANRED1}EXITING..."
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
-	echo "  ENCODING COMPLETE!"
-	echo
+	echo -e "  ${C_CHARTREUSE3}ENCODING COMPLETE!"
+	echo -e "${NO_FORMAT}"
 }
 
 decode() {
 	echo "> DECODING DIGITAL OCEAN AUTHORIZATION TOKEN"
 	if ! DO_TOKEN=$(openssl enc -d -aes-256-cbc -in "$DO_NODE_SCRIPT_HOME/auth_token.enc" -salt -pbkdf2 -pass pass:"$1"); then
-		echo "> DECODING FAILED"
-		echo "  EXITING..."
-		echo
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED${NO_FORMAT}"
+		echo -e "  ${C_INDIANRED1}EXITING..."
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
-	echo "  DECODING COMPLETE!"
+	echo -e "  ${C_CHARTREUSE3}DECODING COMPLETE!"
 	echo
 }
 
@@ -74,7 +76,8 @@ authenticate_doctl() {
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO DIGITAL OCEAN AUTHORIZATION TOKEN FOUND!${NO_FORMAT}"
 		read -p "  AUTHORIZATION TOKEN: " -s DO_TOKEN
-		echo
+		echo -ne "                       "
+		obtain_superuser_permissions
 		encode "$DO_TOKEN" "$SSH_PASSWD"
 		decode $SSH_PASSWD
 		if ! $(doctl auth init -t "$DO_TOKEN" &>/dev/null); then
@@ -128,8 +131,8 @@ check_ip() {
 		LAST_IP=$(cat "$IP_FILE")
 		# Compare current IP with last known IP
 		if [ "$CURRENT_IP" != "$LAST_IP" ]; then
-			echo "> IP HAS CHANGED"
-			echo "  UPDATING FIREWALL RULES..."
+			echo "${C_YELLOW1}> ${F_UNDERLINED}IP HAS CHANGED${NO_FORMAT}"
+			echo "  ${C_YELLOW1}UPDATING FIREWALL RULES..."
 			echo
 			whitelist $CURRENT_IP
 			# If succesful update the last IP file
@@ -158,9 +161,10 @@ check_network_connection() {
 }
 
 obtain_superuser_permissions() {
-	echo "> OBTAIN SUPERUSER PERMISSIONS"
+	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS"
+	echo -ne " "
 	sudo ls /root &>/dev/null
-	echo
+	echo -e "${NO_FORMAT}"
 }
 
 request_ssh_pass() {

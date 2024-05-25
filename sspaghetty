@@ -7,6 +7,35 @@ INSTALL_LOC="/usr/local/bin"
 DO_NODE_SCRIPT_HOME="$HOME/.node"
 DO_TOKEN_FILE="$DO_NODE_SCRIPT_HOME/auth_token.enc"
 
+NO_FORMAT="\033[0m"
+F_BOLD="\033[1m"
+F_UNDERLINED="\033[4m"
+C_INDIANRED1="\033[38;5;203m"
+C_DEEPSKYBLUE3="\033[38;5;32m"
+
+# Function to display a rainbow shift animation
+# Function to display a rainbow shift animation
+rainbow_shift() {
+    local pid=$1
+    local message=$2
+    local colors=(31 32 33 34 35 36) # ANSI color codes for red, green, yellow, blue, magenta, cyan
+    local color_index=0
+
+    while kill -0 "$pid" 2>/dev/null; do
+        # Clear the current line
+        echo -ne "\r"
+
+        # Print the message with the current color
+        echo -ne "\e[${colors[color_index]}m${message}\e[0m"
+
+        # Move to the next color
+        color_index=$(( (color_index + 1) % ${#colors[@]} ))
+
+        # Delay for a short period to create the animation effect
+        sleep 0.1
+    done
+}
+
 encode() {
 	echo "> ENCODING DIGITAL OCEAN AUTHORIZATION TOKEN"
 	if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$DO_NODE_SCRIPT_HOME/auth_token.enc" -pass pass:"$2" <<<"$1"; then
@@ -38,14 +67,22 @@ authenticate_doctl() {
 	if [ -n "$DO_TOKEN" ]; then
 		echo "> DIGITAL OCEAN AUTHORIZATION TOKEN VERIFICATION"
 		echo
-		doctl auth init -t "$DO_TOKEN"
+		if ! $(doctl auth init -t "$DO_TOKEN" &>/dev/null); then
+		  echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
+		  echo -e "${NO_FORMAT}"
+		  exit 1
+		fi
 	else
-		echo "> NO DIGITAL OCEAN AUTHORIZATION TOKEN FOUND!"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO DIGITAL OCEAN AUTHORIZATION TOKEN FOUND!${NO_FORMAT}"
 		read -p "  AUTHORIZATION TOKEN: " -s DO_TOKEN
 		echo
 		encode "$DO_TOKEN" "$SSH_PASSWD"
 		decode $SSH_PASSWD
-		doctl auth init -t "$DO_TOKEN"
+		if ! $(doctl auth init -t "$DO_TOKEN" &>/dev/null); then
+		  echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
+		  echo -e "${NO_FORMAT}"
+		  exit 1
+		fi
 	fi
 	unset $DO_TOKEN
 }
@@ -53,17 +90,17 @@ authenticate_doctl() {
 whitelist() {
 	# Update firewall with CURRENT_IP using doctl
 	if ! FIREWALL_DATA=$(doctl compute firewall list); then
-		echo "> FIREWALL DATA REQUEST FAILED"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED!"
 		echo "  EXITING..."
-		echo
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
 	FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
 	FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
 	if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:"$DROPLET_SSH_PORT",address:"$1"/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" &>/dev/null; then
-		echo "> FIREWALL UPDATE FAILED"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED!"
 		echo "  EXITING..."
-		echo
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
 	remove_cli_authorization
@@ -73,15 +110,15 @@ check_ip() {
 	if check_network_connection; then
 		# Fetch current IP address
 		if ! CURRENT_IP=$(curl -s http://ipv4.icanhazip.com/); then
-			echo "> OBTAINING IP FAILED"
+			echo -e "${C_INDIANRED1}> ${F_UNDERLINED}OBTAINING IP FAILED!"
 			echo "  EXITING..."
-			echo
+			echo -e "${NO_FORMAT}"
 			exit 1
 		fi
 	else
-		echo "> NO INTERNET CONNECTION!"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
 		echo "  COULD NOT RETRIEVE YOUR CURRENT IP. EXITING..."
-		echo
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
 	if [ ! -d "$TMP_DIR" ]; then
@@ -135,7 +172,7 @@ request_ssh_pass() {
 
 remove_cli_authorization() {
 	if ! doctl auth remove --context default &>/dev/null; then
-		echo "> AUTHORIZATION REMOVAL FAILED"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED!"
 		echo "  EXITING..."
 		echo
 		exit 1
@@ -149,9 +186,9 @@ install_cli() {
 	fi
 	echo "> DOWNLOADING DIGITAL OCEAN CLI"
 	if ! LATEST_DOCL_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
-		echo "> DIGITAL OCEAN CLI VERSION REQUEST FAILED"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN CLI VERSION REQUEST FAILED!"
 		echo "  EXITING..."
-		echo
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
 	if ! $(wget -q "$LATEST_DOCL_VERSION") &>/dev/null; then
@@ -268,31 +305,39 @@ connect() {
 	if ! expect -c "spawn ssh -i ${DROPLET_SSH_ID} ${DROPLET_USER}@${DROPLET_IP} -p ${DROPLET_SSH_PORT};expect \"Enter passphrase\";send \"${SSH_PASSWD}\r\";interact"; then
 	# if ! sshpass -p "$SSH_PASSWD" ssh -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT"; then
 	# Ssh identity doesn't seem to work with sshpass
-		echo "> SSH CONNECTION FAILED!"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH CONNECTION FAILED!"
 		echo "  EXITING..."
-		echo
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
 }
 
+echo -e "${C_DEEPSKYBLUE3}${F_BOLD}"
 cat <<EOF
   ###########################################
   # SSPAGHETTY DIGITAL OCEAN NODE CONNECTOR #
   ###########################################
 
-  v0.3 by hgtp_Michael (buzzgreyday)
+  v0.4 by hgtp_Michael (buzzgreyday)
   -------------------------------------------
 EOF
 
+# Example process to run (replace with your actual command)
+example_process() {
+    sleep 10 # Simulate a process running for 10 seconds
+}
+
+echo -e "${NO_FORMAT}"
 case "${1}" in
 "uninstall") uninstall ;;
 "install")
 	if check_network_connection; then
 		install_cli
 	else
-		echo "> NO INTERNET CONNECTION!"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
 		echo "  EXITING..."
 		echo
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
 	;;
@@ -305,14 +350,24 @@ case "${1}" in
 		unset SSH_PASSWD
 		remove_cli_authorization
 	else
-		echo "> NO INTERNET CONNECTION!"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
 		echo "  EXITING..."
-		echo
+		echo -e "${NO_FORMAT}"
 		exit 1
 	fi
 	;;
+"rainbow")
+  # Run the example process in the background
+  example_process &
+  proc_id=$!
+  # Start the rainbow shift animation
+  rainbow_shift $proc_id "> RAINBOW! RAINBOW! RAINBOW!"
+  # Wait for the background process to finish
+  wait $proc_id
+  ;;
 *)
-	echo "> NOT A VALID COMMAND"
-	echo
+	echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NOT A VALID COMMAND!"
+	echo -e "${NO_FORMAT}"
+	exit 1
 	;;
 esac

@@ -14,7 +14,6 @@ C_INDIANRED1="\033[38;5;203m"
 C_DEEPSKYBLUE3="\033[38;5;32m"
 
 # Function to display a rainbow shift animation
-# Function to display a rainbow shift animation
 rainbow_shift() {
     local pid=$1
     local message=$2

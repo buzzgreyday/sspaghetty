@@ -58,7 +58,7 @@ decode() {
 		exit 1
 	fi
 	echo -e "  ${C_CHARTREUSE3}DECODING COMPLETE!"
-	echo
+	echo -e "${NO_FORMAT}"
 }
 
 authenticate_doctl() {

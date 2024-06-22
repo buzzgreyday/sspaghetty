@@ -99,7 +99,7 @@ whitelist() {
 	fi
 	FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
 	FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
-	if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${DROPLET_SSH_PORT},address:${1}/32 protocol:tcp,ports:'9000 9001',address:0.0.0.0/0 protocol:tcp,ports:'9010 9011',address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" >&2; then
+	if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${DROPLET_SSH_PORT},address:${1}/32 protocol:tcp,ports:\"9000 9001\",address:0.0.0.0/0 protocol:tcp,ports:\"9010 9011\",address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" >&2; then
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED!"
 		echo "  EXITING..."
 		echo -e "${NO_FORMAT}"

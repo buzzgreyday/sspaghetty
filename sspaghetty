@@ -102,8 +102,7 @@ whitelist() {
 	if [ -f "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
 		DROPLET_SSH_PORT=$(cat "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt")
 	fi
-	echo "${DROPLET_SSH_PORT}"
-	if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${DROPLET_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" >&2; then
+	if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${DROPLET_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1; then
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED!"
 		echo "  EXITING..."
 		echo -e "${NO_FORMAT}"
@@ -135,8 +134,8 @@ check_ip() {
 		LAST_IP=$(cat "$IP_FILE")
 		# Compare current IP with last known IP
 		if [ "$CURRENT_IP" != "$LAST_IP" ]; then
-			echo "${C_YELLOW1}> ${F_UNDERLINED}IP HAS CHANGED${NO_FORMAT}"
-			echo "  ${C_YELLOW1}UPDATING FIREWALL RULES..."
+			echo -e "${C_YELLOW1}> ${F_UNDERLINED}IP HAS CHANGED${NO_FORMAT}"
+			echo -e "  ${C_YELLOW1}UPDATING FIREWALL RULES..."
 			echo
 			whitelist $CURRENT_IP
 			# If succesful update the last IP file

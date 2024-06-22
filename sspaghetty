@@ -15,28 +15,6 @@ C_DEEPSKYBLUE3="\033[38;5;32m"
 C_YELLOW1="\033[38;5;226m"
 C_CHARTREUSE3="\033[38;5;76m"
 
-# Function to display a rainbow shift animation
-rainbow_shift() {
-    local pid=$1
-    local message=$2
-    local colors=(31 32 33 34 35 36) # ANSI color codes for red, green, yellow, blue, magenta, cyan
-    local color_index=0
-
-    while kill -0 "$pid" 2>/dev/null; do
-        # Clear the current line
-        echo -ne "\r"
-
-        # Print the message with the current color
-        echo -ne "\e[${colors[color_index]}m${message}\e[0m"
-
-        # Move to the next color
-        color_index=$(( (color_index + 1) % ${#colors[@]} ))
-
-        # Delay for a short period to create the animation effect
-        sleep 0.1
-    done
-}
-
 encode() {
 	echo "> ENCODING DIGITAL OCEAN AUTHORIZATION TOKEN"
 	if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$DO_NODE_SCRIPT_HOME/auth_token.enc" -pass pass:"$2" <<<"$1"; then
@@ -360,15 +338,6 @@ case "${1}" in
 		exit 1
 	fi
 	;;
-"rainbow")
-  # Run the example process in the background
-  example_process &
-  proc_id=$!
-  # Start the rainbow shift animation
-  rainbow_shift $proc_id "> RAINBOW! RAINBOW! RAINBOW!"
-  # Wait for the background process to finish
-  wait $proc_id
-  ;;
 *)
 	echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NOT A VALID COMMAND!"
 	echo -e "${NO_FORMAT}"

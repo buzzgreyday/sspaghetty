@@ -271,7 +271,7 @@ node_values() {
 	if [ ! -n "$DROPLET_SSH_ID" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE SSH IDENTITY FILE PATH SET"
-		read -p "  FULL PATH TO SSH IDENTITY FILE ["$HOME"/.ssh/id_rsa]: " DROPLET_SSH_ID
+		read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. "$HOME"/.ssh/id_rsa]: " DROPLET_SSH_ID
 		echo
 		echo "$DROPLET_SSH_ID" | sudo tee "$DO_NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
 	fi
@@ -309,8 +309,6 @@ connect() {
 	node_values
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
 	if ! expect -c "spawn ssh -i ${DROPLET_SSH_ID} ${DROPLET_USER}@${DROPLET_IP} -p ${DROPLET_SSH_PORT};expect \"Enter passphrase\";send \"${SSH_PASSWD}\r\";interact"; then
-	# if ! sshpass -p "$SSH_PASSWD" ssh -i "$DROPLET_SSH_ID" "$DROPLET_USER"@"$DROPLET_IP" -p "$DROPLET_SSH_PORT"; then
-	# Ssh identity doesn't seem to work with sshpass
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH CONNECTION FAILED!"
 		echo "  EXITING..."
 		echo -e "${NO_FORMAT}"
@@ -324,7 +322,7 @@ cat <<EOF
   # SSPAGHETTY DIGITAL OCEAN NODE CONNECTOR #
   ###########################################
 
-  v0.4 by hgtp_Michael (buzzgreyday)
+  v0.5 by buzzgreyday (aka. hgtp_Michael)
   -------------------------------------------
 EOF
 

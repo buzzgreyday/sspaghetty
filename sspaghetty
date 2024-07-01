@@ -4,8 +4,9 @@ TMP_DIR="$HOME/.tmp"
 IP_FILE="$HOME/.tmp/last_ip.txt"
 DOCTL_DOWNLOAD_FILE="$HOME/doctl"
 INSTALL_LOC="/usr/local/bin"
-DO_NODE_SCRIPT_HOME="$HOME/.node"
-DO_TOKEN_FILE="$DO_NODE_SCRIPT_HOME/auth_token.enc"
+NODE_SCRIPT_HOME="$HOME/.node"
+DO_TOKEN_FILE="$NODE_SCRIPT_HOME/do_auth_token.enc"
+HCLOUD_TOKEN_FILE="$NODE_SCRIPT_HOME/hcloud_auth_token.enc"
 
 NO_FORMAT="\033[0m"
 F_BOLD="\033[1m"
@@ -16,20 +17,34 @@ C_YELLOW1="\033[38;5;226m"
 C_CHARTREUSE3="\033[38;5;76m"
 
 encode() {
-	echo "> ENCODING DIGITAL OCEAN AUTHORIZATION TOKEN"
-	if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$DO_NODE_SCRIPT_HOME/auth_token.enc" -pass pass:"$2" <<<"$1"; then
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED${NO_FORMAT}"
-		echo "  ${C_INDIANRED1}EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
-	fi
-	echo -e "  ${C_CHARTREUSE3}ENCODING COMPLETE!"
-	echo -e "${NO_FORMAT}"
+  if [ "$3" == "hcloud" ]; then
+    service_provider="HETZNER"
+    token_file="$HCLOUD_TOKEN_FILE"
+  else
+    service_provider="DIGITAL OCEAN"
+    token_file="$DO_TOKEN_FILE"
+  fi
+  echo "> ENCODING $service_provider AUTHORIZATION TOKEN"
+  if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$NODE_SCRIPT_HOME/$token_file" -pass pass:"$2" <<<"$1"; then
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED${NO_FORMAT}"
+    echo "  ${C_INDIANRED1}EXITING..."
+    echo -e "${NO_FORMAT}"
+    exit 1
+  fi
+  echo -e "  ${C_CHARTREUSE3}ENCODING COMPLETE!"
+  echo -e "${NO_FORMAT}"
 }
 
 decode() {
-	echo "> DECODING DIGITAL OCEAN AUTHORIZATION TOKEN"
-	if ! DO_TOKEN=$(openssl enc -d -aes-256-cbc -in "$DO_NODE_SCRIPT_HOME/auth_token.enc" -salt -pbkdf2 -pass pass:"$1"); then
+  if [ "$2" == "hcloud" ]; then
+    service_provider="HETZNER"
+    token_file="$HCLOUD_TOKEN_FILE"
+  else
+    service_provider="DIGITAL OCEAN"
+    token_file="$DO_TOKEN_FILE"
+  fi
+	echo "> DECODING $service_provider AUTHORIZATION TOKEN"
+	if ! TOKEN=$(openssl enc -d -aes-256-cbc -in "$NODE_SCRIPT_HOME/$token_file" -salt -pbkdf2 -pass pass:"$1"); then
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED${NO_FORMAT}"
 		echo -e "  ${C_INDIANRED1}EXITING..."
 		echo -e "${NO_FORMAT}"
@@ -40,52 +55,73 @@ decode() {
 }
 
 authenticate_doctl() {
-	if [ -f "$DO_TOKEN_FILE" ]; then
-		decode $SSH_PASSWD
+  if [ "$1" == "hcloud" ]; then
+    service_provider="HETZNER"
+    token_file="$HCLOUD_TOKEN_FILE"
+  else
+    service_provider="DIGITAL OCEAN"
+    token_file="$DO_TOKEN_FILE"
+  fi
+
+	if [ -f "$token_file" ]; then
+		decode $SSH_PASSWD "$1"
 	fi
-	if [ -n "$DO_TOKEN" ]; then
-		echo "> DIGITAL OCEAN AUTHORIZATION TOKEN VERIFICATION"
+	if [ -n "$TOKEN" ]; then
+		echo "> $service_provider AUTHORIZATION TOKEN VERIFICATION"
 		echo
-		if ! $(doctl auth init -t "$DO_TOKEN" &>/dev/null); then
-		  echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
-		  echo -e "${NO_FORMAT}"
-		  exit 1
-		fi
+		if [ "$1" == "hcloud" ]; then
+		  # Write the Hetzner logic here
+		  pass
+		else
+      if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
+        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
+        echo -e "${NO_FORMAT}"
+        exit 1
+      fi
+    fi
 	else
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO DIGITAL OCEAN AUTHORIZATION TOKEN FOUND!${NO_FORMAT}"
-		read -p "  AUTHORIZATION TOKEN: " -s DO_TOKEN
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO $service_provider AUTHORIZATION TOKEN FOUND!${NO_FORMAT}"
+		read -p "  AUTHORIZATION TOKEN: " -s TOKEN
 		echo -ne "                       "
 		obtain_superuser_permissions
-		encode "$DO_TOKEN" "$SSH_PASSWD"
-		decode $SSH_PASSWD
-		if ! $(doctl auth init -t "$DO_TOKEN" &>/dev/null); then
-		  echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
-		  echo -e "${NO_FORMAT}"
-		  exit 1
-		fi
+		encode "$TOKEN" "$SSH_PASSWD" "$1"
+		decode $SSH_PASSWD "$1"
+		if [ "$1" == "hcloud" ]; then
+		  pass
+		else
+      if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
+        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
+        echo -e "${NO_FORMAT}"
+        exit 1
+      fi
+    fi
 	fi
-	unset $DO_TOKEN
+	unset $TOKEN
 }
 
 whitelist() {
-	# Update firewall with CURRENT_IP using doctl
-	if ! FIREWALL_DATA=$(doctl compute firewall list); then
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED!"
-		echo "  EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
-	fi
-	FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
-	FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
-	if [ -f "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
-		DROPLET_SSH_PORT=$(cat "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt")
-	fi
-	if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${DROPLET_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1; then
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED!"
-		echo "  EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
-	fi
+  if [ "$2" == "hcloud" ]; then
+    pass
+  else
+    # Update firewall with CURRENT_IP using doctl
+    if ! FIREWALL_DATA=$(doctl compute firewall list); then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED!"
+      echo "  EXITING..."
+      echo -e "${NO_FORMAT}"
+      exit 1
+    fi
+    FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
+    FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
+    if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
+      DROPLET_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
+    fi
+    if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${DROPLET_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1; then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED!"
+      echo "  EXITING..."
+      echo -e "${NO_FORMAT}"
+      exit 1
+    fi
+  fi
 	remove_cli_authorization
 }
 
@@ -165,42 +201,46 @@ remove_cli_authorization() {
 }
 
 install_cli() {
-	if [ ! -d "$DO_NODE_SCRIPT_HOME" ]; then
-		sudo mkdir -p "$DO_NODE_SCRIPT_HOME"
+	if [ ! -d "$NODE_SCRIPT_HOME" ]; then
+		sudo mkdir -p "$NODE_SCRIPT_HOME"
 	fi
-	echo "> DOWNLOADING DIGITAL OCEAN CLI"
-	if ! LATEST_DOCL_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN CLI VERSION REQUEST FAILED!"
-		echo "  EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
-	fi
-	if ! $(wget -q "$LATEST_DOCL_VERSION") &>/dev/null; then
-		echo "> DIGITAL OCEAN CLI DOWNLOAD FAILED"
-		echo "  EXITING..."
-		echo
-		exit 1
-	fi
-	echo "> INSTALLING DIGITAL OCEAN CLI"
-	echo
-	if ! tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
-		echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
-		echo "  EXITING..."
-		echo
-		exit 1
-	fi
-	obtain_superuser_permissions
-	sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
-	sudo chmod +x "$INSTALL_LOC/doctl"
-	rm "$(basename "$LATEST_DOCL_VERSION")"
-	request_ssh_pass
-	authenticate_doctl
-	unset SSH_PASSWD
-	node_values
-	remove_cli_authorization
-	sudo apt install expect
-	echo "> INSTALLATION/UPDATE COMPLETE!"
-	echo
+	if [ "$1" == "hcloud" ]; then
+	  pass
+	else
+    echo "> DOWNLOADING DIGITAL OCEAN CLI"
+    if ! LATEST_DOCL_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN CLI VERSION REQUEST FAILED!"
+      echo "  EXITING..."
+      echo -e "${NO_FORMAT}"
+      exit 1
+    fi
+    if ! $(wget -q "$LATEST_DOCL_VERSION") &>/dev/null; then
+      echo "> DIGITAL OCEAN CLI DOWNLOAD FAILED"
+      echo "  EXITING..."
+      echo
+      exit 1
+    fi
+    echo "> INSTALLING DIGITAL OCEAN CLI"
+    echo
+    if ! tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
+      echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
+      echo "  EXITING..."
+      echo
+      exit 1
+    fi
+    obtain_superuser_permissions
+    sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
+    sudo chmod +x "$INSTALL_LOC/doctl"
+    rm "$(basename "$LATEST_DOCL_VERSION")"
+    request_ssh_pass
+    authenticate_doctl "$1"
+  fi
+  unset SSH_PASSWD
+  node_values
+  remove_cli_authorization
+  sudo apt install expect
+  echo "> INSTALLATION/UPDATE COMPLETE!"
+  echo
 }
 
 uninstall() {
@@ -212,7 +252,7 @@ uninstall() {
 	remove_cli_authorization
 	obtain_superuser_permissions
 	sudo rm -f "$INSTALL_LOC/doctl"
-	sudo rm -rf "$DO_NODE_SCRIPT_HOME"
+	sudo rm -rf "$NODE_SCRIPT_HOME"
 	sudo apt remove expect
 	echo "> UNINSTALL COMPLETE!"
 	echo
@@ -220,45 +260,45 @@ uninstall() {
 }
 
 node_values() {
-	if [ -f "$DO_NODE_SCRIPT_HOME/node_ip.txt" ]; then
-		DROPLET_IP=$(cat "$DO_NODE_SCRIPT_HOME/node_ip.txt")
+	if [ -f "$NODE_SCRIPT_HOME/node_ip.txt" ]; then
+		DROPLET_IP=$(cat "$NODE_SCRIPT_HOME/node_ip.txt")
 	fi
-	if [ -f "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
-		DROPLET_SSH_PORT=$(cat "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt")
+	if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
+		DROPLET_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
 	fi
-	if [ -f "$DO_NODE_SCRIPT_HOME/node_ssh_id.txt" ]; then
-		DROPLET_SSH_ID=$(cat "$DO_NODE_SCRIPT_HOME/node_ssh_id.txt")
+	if [ -f "$NODE_SCRIPT_HOME/node_ssh_id.txt" ]; then
+		DROPLET_SSH_ID=$(cat "$NODE_SCRIPT_HOME/node_ssh_id.txt")
 	fi
-	if [ -f "$DO_NODE_SCRIPT_HOME/node_user.txt" ]; then
-		DROPLET_USER=$(cat "$DO_NODE_SCRIPT_HOME/node_user.txt")
+	if [ -f "$NODE_SCRIPT_HOME/node_user.txt" ]; then
+		DROPLET_USER=$(cat "$NODE_SCRIPT_HOME/node_user.txt")
 	fi
 	if [ ! -n "$DROPLET_IP" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE IP SET"
 		read -p "  NODE IP: " DROPLET_IP
 		echo
-		echo "$DROPLET_IP" | sudo tee "$DO_NODE_SCRIPT_HOME/node_ip.txt" &>/dev/null
+		echo "$DROPLET_IP" | sudo tee "$NODE_SCRIPT_HOME/node_ip.txt" &>/dev/null
 	fi
 	if [ ! -n "$DROPLET_SSH_PORT" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE SSH PORT SET"
 		read -p "  NODE SSH PORT: " DROPLET_SSH_PORT
 		echo
-		echo "$DROPLET_SSH_PORT" | sudo tee "$DO_NODE_SCRIPT_HOME/node_ssh_port.txt" &>/dev/null
+		echo "$DROPLET_SSH_PORT" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_port.txt" &>/dev/null
 	fi
 	if [ ! -n "$DROPLET_SSH_ID" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE SSH IDENTITY FILE PATH SET"
 		read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. "$HOME"/.ssh/id_rsa]: " DROPLET_SSH_ID
 		echo
-		echo "$DROPLET_SSH_ID" | sudo tee "$DO_NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
+		echo "$DROPLET_SSH_ID" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
 	fi
 	if [ ! -n "$DROPLET_USER" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE USERNAME SET"
 		read -p "  NODE USERNAME [nodeadmin]: " DROPLET_USER
 		echo
-		echo "$DROPLET_USER" | sudo tee "$DO_NODE_SCRIPT_HOME/node_user.txt" &>/dev/null
+		echo "$DROPLET_USER" | sudo tee "$NODE_SCRIPT_HOME/node_user.txt" &>/dev/null
 	fi
 }
 
@@ -314,7 +354,7 @@ case "${1}" in
 "uninstall") uninstall ;;
 "install")
 	if check_network_connection; then
-		install_cli
+		install_cli "doctl"
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
 		echo "  EXITING..."
@@ -326,7 +366,7 @@ case "${1}" in
 "connect")
 	if check_network_connection; then
 		request_ssh_pass
-		authenticate_doctl
+		authenticate_doctl "doctl"
 		check_ip
 		connect
 		unset SSH_PASSWD

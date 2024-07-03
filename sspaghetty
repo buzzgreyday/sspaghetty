@@ -86,7 +86,13 @@ authenticate() {
 		echo
 		if [ "$1" == "hcloud" ]; then
 		  # Write the Hetzner logic here
-		  pass
+		  # shellcheck disable=SC2091
+		  if ! $(HCLOUD_TOKEN="${TOKEN}" hcloud context create sspaghetty-node <<<"Y"); then
+		    # "sspaghetty-node" should be the project name in Hetzner
+		    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
+        echo -e "${NO_FORMAT}"
+        exit 1
+      fi
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
@@ -108,7 +114,13 @@ authenticate() {
 		encode "$TOKEN" "$SSH_PASSWD" "$1"
 		decode $SSH_PASSWD "$1"
 		if [ "$1" == "hcloud" ]; then
-		  pass
+		  # shellcheck disable=SC2091
+		  if ! $(HCLOUD_TOKEN="${TOKEN}" hcloud context create sspaghetty-node <<<"Y"); then
+		    # "sspaghetty-node" should be the project name in Hetzner
+		    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
+        echo -e "${NO_FORMAT}"
+        exit 1
+      fi
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
@@ -128,7 +140,64 @@ authenticate() {
 
 whitelist() {
   if [ "$2" == "hcloud" ]; then
-    pass
+    # FIREWALL_NAME="my-firewall-name"
+    if ! FIREWALL_NAME=$(hcloud firewall list -o columns=name,noheader | head -n 1); then
+      # Will take the first name in the list, otherwise this would need configuration at installation
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL NAME REQUEST FAILED!"
+      echo "  EXITING..."
+      echo -e "${NO_FORMAT}"
+      exit 1
+    fi
+    if ! FIREWALL_DATA=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}'); then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED!"
+      echo "  EXITING..."
+      echo -e "${NO_FORMAT}"
+      exit 1
+    fi
+    FIREWALL_ID=$(echo "$FIREWALL_DATA" | grep "$FIREWALL_NAME" | awk '{print $1}')
+    echo "${FIREWALL_DATA}"
+    if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
+      NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
+    fi
+    echo "[
+      {
+        \"direction\": \"in\",
+        \"protocol\": \"tcp\",
+        \"port\": \"${NODE_SSH_PORT}\",
+        \"source_ips\": [\"${1}/32\"]
+      },
+      {
+        \"direction\": \"in\",
+        \"protocol\": \"tcp\",
+        \"port\": \"9000-9001\",
+        \"source_ips\": [\"0.0.0.0/0\"]
+      },
+      {
+        \"direction\": \"in\",
+        \"protocol\": \"tcp\",
+        \"port\": \"9010-9011\",
+        \"source_ips\": [\"0.0.0.0/0\"]
+      },
+      {
+        \"direction\": \"out\",
+        \"protocol\": \"tcp\",
+        \"port\": \"any\",
+        \"destination_ips\": [\"0.0.0.0/0\"]
+      },
+      {
+        \"direction\": \"out\",
+        \"protocol\": \"udp\",
+        \"port\": \"any\",
+        \"destination_ips\": [\"0.0.0.0/0\"]
+      },
+      {
+        \"direction\": \"out\",
+        \"protocol\": \"icmp\",
+        \"destination_ips\": [\"0.0.0.0/0\"]
+      }
+    ]" > "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
+    hcloud firewall update-rules ${FIREWALL_DATA} --rules-from-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
+    unset HCLOUD_TOKEN
   else
     # Update firewall with CURRENT_IP using doctl
     if ! FIREWALL_DATA=$(doctl compute firewall list); then
@@ -140,9 +209,9 @@ whitelist() {
     FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
     FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
     if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
-      DROPLET_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
+      NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
     fi
-    if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${DROPLET_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1; then
+    if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${NODE_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1; then
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED!"
       echo "  EXITING..."
       echo -e "${NO_FORMAT}"
@@ -286,7 +355,7 @@ install_cli() {
   request_ssh_pass
   authenticate "$1"
   unset SSH_PASSWD
-  node_values
+  node_values "${1}"
   remove_cli_authorization "${1}"
   sudo apt install expect
   echo "> INSTALLATION/UPDATE COMPLETE!"
@@ -321,37 +390,37 @@ uninstall() {
 
 node_values() {
 	if [ -f "$NODE_SCRIPT_HOME/node_ip.txt" ]; then
-		DROPLET_IP=$(cat "$NODE_SCRIPT_HOME/node_ip.txt")
+		NODE_IP=$(cat "$NODE_SCRIPT_HOME/node_ip.txt")
 	fi
 	if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
-		DROPLET_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
+		NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
 	fi
 	if [ -f "$NODE_SCRIPT_HOME/node_ssh_id.txt" ]; then
-		DROPLET_SSH_ID=$(cat "$NODE_SCRIPT_HOME/node_ssh_id.txt")
+		NODE_SSH_ID=$(cat "$NODE_SCRIPT_HOME/node_ssh_id.txt")
 	fi
 	if [ -f "$NODE_SCRIPT_HOME/node_user.txt" ]; then
 		DROPLET_USER=$(cat "$NODE_SCRIPT_HOME/node_user.txt")
 	fi
-	if [ ! -n "$DROPLET_IP" ]; then
+	if [ ! -n "$NODE_IP" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE IP SET"
-		read -p "  NODE IP: " DROPLET_IP
+		read -p "  NODE IP: " NODE_IP
 		echo
-		echo "$DROPLET_IP" | sudo tee "$NODE_SCRIPT_HOME/node_ip.txt" &>/dev/null
+		echo "$NODE_IP" | sudo tee "$NODE_SCRIPT_HOME/node_ip.txt" &>/dev/null
 	fi
-	if [ ! -n "$DROPLET_SSH_PORT" ]; then
+	if [ ! -n "$NODE_SSH_PORT" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE SSH PORT SET"
-		read -p "  NODE SSH PORT: " DROPLET_SSH_PORT
+		read -p "  NODE SSH PORT: " NODE_SSH_PORT
 		echo
-		echo "$DROPLET_SSH_PORT" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_port.txt" &>/dev/null
+		echo "$NODE_SSH_PORT" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_port.txt" &>/dev/null
 	fi
-	if [ ! -n "$DROPLET_SSH_ID" ]; then
+	if [ ! -n "$NODE_SSH_ID" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE SSH IDENTITY FILE PATH SET"
-		read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. $HOME/.ssh/id_rsa]: " DROPLET_SSH_ID
+		read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. $HOME/.ssh/id_rsa]: " NODE_SSH_ID
 		echo
-		echo "$DROPLET_SSH_ID" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
+		echo "$NODE_SSH_ID" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
 	fi
 	if [ ! -n "$DROPLET_USER" ]; then
 		obtain_superuser_permissions
@@ -386,7 +455,7 @@ escape_string() {
 connect() {
 	node_values
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
-	if ! expect -c "spawn ssh -i ${DROPLET_SSH_ID} ${DROPLET_USER}@${DROPLET_IP} -p ${DROPLET_SSH_PORT};expect \"Enter passphrase\";send \"${SSH_PASSWD}\r\";interact"; then
+	if ! expect -c "spawn ssh -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT};expect \"Enter passphrase\";send \"${SSH_PASSWD}\r\";interact"; then
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH CONNECTION FAILED!"
 		echo "  EXITING..."
 		echo -e "${NO_FORMAT}"

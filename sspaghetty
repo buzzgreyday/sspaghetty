@@ -198,7 +198,7 @@ whitelist() {
     ]" > "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     hcloud firewall update-rules "${FIREWALL_DATA}" --rules-from-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     rm -f "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
-    unset HCLOUD_TOKEN
+    remove_cli_authorization "$2"
   else
     # Update firewall with CURRENT_IP using doctl
     if ! FIREWALL_DATA=$(doctl compute firewall list); then
@@ -289,16 +289,23 @@ request_ssh_pass() {
 
 remove_cli_authorization() {
   if [ "$1" == "hcloud" ]; then
-    pass
+    if ! hcloud context delete "sspaghetty-node"; then
+      unset HCLOUD_TOKEN
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}HETZNER AUTHORIZATION REMOVAL FAILED"
+      echo "  EXITING..."
+      echo -e "${NO_FORMAT}"
+      exit 1
+    fi
+    unset HCLOUD_TOKEN
   elif [ "$1" == "doctl" ]; then
     if ! doctl auth remove --context default &>/dev/null; then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED!"
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN AUTHORIZATION REMOVAL FAILED"
       echo "  EXITING..."
       echo -e "${NO_FORMAT}"
       exit 1
     fi
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED!"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED: ${1} IS NOT A VALID COMMAND"
     echo "  EXITING..."
     echo -e "${NO_FORMAT}"
     exit 1

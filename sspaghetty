@@ -2,7 +2,7 @@
 
 TMP_DIR="$HOME/.tmp"
 IP_FILE="$HOME/.tmp/last_ip.txt"
-DOCTL_DOWNLOAD_FILE="$HOME/doctl"
+DOWNLOAD_LOC="$HOME"
 INSTALL_LOC="/usr/local/bin"
 NODE_SCRIPT_HOME="$HOME/.node"
 DO_TOKEN_FILE="$NODE_SCRIPT_HOME/do_auth_token.enc"
@@ -20,9 +20,14 @@ encode() {
   if [ "$3" == "hcloud" ]; then
     service_provider="HETZNER"
     token_file="$HCLOUD_TOKEN_FILE"
-  else
+  elif [ "$3" == "doctl" ]; then
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
+  else
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED: ${3} IS NOT A VALID COMMAND${NO_FORMAT}"
+    echo "  ${C_INDIANRED1}EXITING..."
+    echo -e "${NO_FORMAT}"
+    exit 1
   fi
   echo "> ENCODING $service_provider AUTHORIZATION TOKEN"
   if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$NODE_SCRIPT_HOME/$token_file" -pass pass:"$2" <<<"$1"; then
@@ -39,9 +44,14 @@ decode() {
   if [ "$2" == "hcloud" ]; then
     service_provider="HETZNER"
     token_file="$HCLOUD_TOKEN_FILE"
-  else
+  elif [ "$2" == "doctl" ]; then
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
+  else
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED: ${2} IS NOT A VALID COMMAND${NO_FORMAT}"
+		echo -e "  ${C_INDIANRED1}EXITING..."
+		echo -e "${NO_FORMAT}"
+		exit 1
   fi
 	echo "> DECODING $service_provider AUTHORIZATION TOKEN"
 	if ! TOKEN=$(openssl enc -d -aes-256-cbc -in "$NODE_SCRIPT_HOME/$token_file" -salt -pbkdf2 -pass pass:"$1"); then
@@ -54,13 +64,18 @@ decode() {
 	echo -e "${NO_FORMAT}"
 }
 
-authenticate_doctl() {
+authenticate() {
   if [ "$1" == "hcloud" ]; then
     service_provider="HETZNER"
     token_file="$HCLOUD_TOKEN_FILE"
-  else
+  elif [ "$1" == "doctl" ]; then
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
+  else
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND! ${NO_FORMAT}"
+    echo -e "  ${C_INDIANRED1}EXITING..."
+		echo -e "${NO_FORMAT}"
+    exit 1
   fi
 
 	if [ -f "$token_file" ]; then
@@ -72,12 +87,18 @@ authenticate_doctl() {
 		if [ "$1" == "hcloud" ]; then
 		  # Write the Hetzner logic here
 		  pass
-		else
+		elif [ "$1" == "doctl" ]; then
+      # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
         echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
         echo -e "${NO_FORMAT}"
         exit 1
       fi
+    else
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND! ${NO_FORMAT}"
+      echo -e "  ${C_INDIANRED1}EXITING..."
+		  echo -e "${NO_FORMAT}"
+      exit 1
     fi
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO $service_provider AUTHORIZATION TOKEN FOUND!${NO_FORMAT}"
@@ -88,12 +109,18 @@ authenticate_doctl() {
 		decode $SSH_PASSWD "$1"
 		if [ "$1" == "hcloud" ]; then
 		  pass
-		else
+		elif [ "$1" == "doctl" ]; then
+      # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
         echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
         echo -e "${NO_FORMAT}"
         exit 1
       fi
+    else
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND! ${NO_FORMAT}"
+      echo -e "  ${C_INDIANRED1}EXITING..."
+		  echo -e "${NO_FORMAT}"
+      exit 1
     fi
 	fi
 	unset $TOKEN
@@ -122,7 +149,7 @@ whitelist() {
       exit 1
     fi
   fi
-	remove_cli_authorization
+	remove_cli_authorization "$2"
 }
 
 check_ip() {
@@ -151,21 +178,21 @@ check_ip() {
 			echo -e "${C_YELLOW1}> ${F_UNDERLINED}IP HAS CHANGED${NO_FORMAT}"
 			echo -e "  ${C_YELLOW1}UPDATING FIREWALL RULES..."
 			echo
-			whitelist $CURRENT_IP
+			whitelist "$CURRENT_IP" "${1}"
 			# If succesful update the last IP file
 			echo "$CURRENT_IP" >"$IP_FILE"
 		else
 			echo "> IP REMAINS UNCHANGED"
 			echo "  CONTINUING WITHOUT UPDATING FIREWALL RULES..."
 			echo
-			remove_cli_authorization
+			remove_cli_authorization "${1}"
 		fi
 	else
 		echo "> SAVING CURRENT IP"
 		echo "$CURRENT_IP" >"$IP_FILE"
 		echo "  UPDATING FIREWALL RULES..."
 		echo
-		whitelist $CURRENT_IP
+		whitelist "$CURRENT_IP" "${1}"
 	fi
 }
 
@@ -191,12 +218,21 @@ request_ssh_pass() {
 }
 
 remove_cli_authorization() {
-	if ! doctl auth remove --context default &>/dev/null; then
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED!"
-		echo "  EXITING..."
-		echo
-		exit 1
-	fi
+  if [ "$1" == "hcloud" ]; then
+    pass
+  elif [ "$1" == "doctl" ]; then
+    if ! doctl auth remove --context default &>/dev/null; then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED!"
+      echo "  EXITING..."
+      echo -e "${NO_FORMAT}"
+      exit 1
+    fi
+  else
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED!"
+    echo "  EXITING..."
+    echo -e "${NO_FORMAT}"
+    exit 1
+  fi
 
 }
 
@@ -205,53 +241,77 @@ install_cli() {
 		sudo mkdir -p "$NODE_SCRIPT_HOME"
 	fi
 	if [ "$1" == "hcloud" ]; then
-	  pass
-	else
-    echo "> DOWNLOADING DIGITAL OCEAN CLI"
-    if ! LATEST_DOCL_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN CLI VERSION REQUEST FAILED!"
+	  service_provider="HETZNER"
+	  echo "> DOWNLOADING ${service_provider} CLI"
+	  if ! LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/hetznercloud/cli/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
+	    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLOUD CLI VERSION REQUEST FAILED!"
       echo "  EXITING..."
       echo -e "${NO_FORMAT}"
       exit 1
     fi
-    if ! $(wget -q "$LATEST_DOCL_VERSION") &>/dev/null; then
-      echo "> DIGITAL OCEAN CLI DOWNLOAD FAILED"
+
+	elif [ "$1" == "doctl" ]; then
+	  service_provider="DIGITAL OCEAN"
+    echo "> DOWNLOADING ${service_provider} CLI"
+    if ! LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLI VERSION REQUEST FAILED!"
       echo "  EXITING..."
-      echo
+      echo -e "${NO_FORMAT}"
       exit 1
     fi
-    echo "> INSTALLING DIGITAL OCEAN CLI"
-    echo
-    if ! tar xf "$(basename "$LATEST_DOCL_VERSION")" >/dev/null; then
-      echo "> DIGITAL OCEAN CLI EXTRACTION FAILED"
-      echo "  EXITING..."
-      echo
-      exit 1
-    fi
-    obtain_superuser_permissions
-    sudo mv "$DOCTL_DOWNLOAD_FILE" "$INSTALL_LOC"
-    sudo chmod +x "$INSTALL_LOC/doctl"
-    rm "$(basename "$LATEST_DOCL_VERSION")"
-    request_ssh_pass
-    authenticate_doctl "$1"
+  else
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A COMMAND!"
+    exit 1
   fi
+  # shellcheck disable=SC2091
+  if ! $(wget -q "$LATEST_CLI_VERSION" -P "$DOWNLOAD_LOC"); then
+    echo "> ${service_provider} CLI DOWNLOAD FAILED"
+    echo "  EXITING..."
+    echo
+    exit 1
+  fi
+  echo "> INSTALLING ${service_provider} CLI"
+  echo
+  echo "${DOWNLOAD_LOC}/$(basename "${LATEST_CLI_VERSION}")"
+  obtain_superuser_permissions
+  if ! sudo tar xf "${DOWNLOAD_LOC}/$(basename "${LATEST_CLI_VERSION}")" -C "${INSTALL_LOC}"; then
+    echo "> ${service_provider} CLI EXTRACTION FAILED"
+    echo "  EXITING..."
+    echo
+    exit 1
+  fi
+  # sudo mv "${DOWNLOAD_LOC}/${1}" "$INSTALL_LOC"
+  sudo chmod +x "$INSTALL_LOC/${1}"
+  rm "${DOWNLOAD_LOC}/$(basename "$LATEST_CLI_VERSION")"
+  request_ssh_pass
+  authenticate "$1"
   unset SSH_PASSWD
   node_values
-  remove_cli_authorization
+  remove_cli_authorization "${1}"
   sudo apt install expect
   echo "> INSTALLATION/UPDATE COMPLETE!"
   echo
 }
 
 uninstall() {
-	echo "> UNINSTALLING DIGITAL OCEAN NODE SCRIPT"
+  if [ "$1" == "hcloud" ]; then
+    service_provider="HETZNER"
+  elif [ "$1" == "doctl" ]; then
+    service_provider="DIGITAL OCEAN"
+  else
+    echo "> ${service_provider} UNINSTALL FAILED: ${1} IS NOT A VALID COMMAND"
+    echo "  EXITING..."
+    echo
+    exit 1
+  fi
+	echo "> UNINSTALLING ${service_provider} NODE SCRIPT"
 	echo "  REMOVING STORED IP DATA"
 	rm -f "$IP_FILE"
-	echo "  REMOVING DIGITAL OCEAN CLI INSTALLATION"
+	echo "  REMOVING $service_provider CLI INSTALLATION"
 	echo
-	remove_cli_authorization
+	remove_cli_authorization "${1}"
 	obtain_superuser_permissions
-	sudo rm -f "$INSTALL_LOC/doctl"
+	sudo rm -f "$INSTALL_LOC/${1}"
 	sudo rm -rf "$NODE_SCRIPT_HOME"
 	sudo apt remove expect
 	echo "> UNINSTALL COMPLETE!"
@@ -289,7 +349,7 @@ node_values() {
 	if [ ! -n "$DROPLET_SSH_ID" ]; then
 		obtain_superuser_permissions
 		echo "> NO NODE SSH IDENTITY FILE PATH SET"
-		read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. "$HOME"/.ssh/id_rsa]: " DROPLET_SSH_ID
+		read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. $HOME/.ssh/id_rsa]: " DROPLET_SSH_ID
 		echo
 		echo "$DROPLET_SSH_ID" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
 	fi
@@ -351,10 +411,10 @@ example_process() {
 
 echo -e "${NO_FORMAT}"
 case "${1}" in
-"uninstall") uninstall ;;
+"uninstall") uninstall "${2}";;
 "install")
 	if check_network_connection; then
-		install_cli "doctl"
+		install_cli "${2}"
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
 		echo "  EXITING..."
@@ -366,11 +426,11 @@ case "${1}" in
 "connect")
 	if check_network_connection; then
 		request_ssh_pass
-		authenticate_doctl "doctl"
-		check_ip
+		authenticate "${2}"
+		check_ip "${2}"
 		connect
 		unset SSH_PASSWD
-		remove_cli_authorization
+		remove_cli_authorization "${2}"
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
 		echo "  EXITING..."

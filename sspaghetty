@@ -326,7 +326,6 @@ install_cli() {
       echo -e "${NO_FORMAT}"
       exit 1
     fi
-
 	elif [ "$1" == "doctl" ]; then
 	  service_provider="DIGITAL OCEAN"
     echo "> DOWNLOADING ${service_provider} CLI"

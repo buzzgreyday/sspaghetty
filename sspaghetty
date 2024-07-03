@@ -197,6 +197,7 @@ whitelist() {
       }
     ]" > "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     hcloud firewall update-rules "${FIREWALL_DATA}" --rules-from-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
+    rm -f "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     unset HCLOUD_TOKEN
   else
     # Update firewall with CURRENT_IP using doctl

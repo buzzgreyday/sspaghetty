@@ -472,9 +472,9 @@ connect() {
 
 echo -e "${C_DEEPSKYBLUE3}${F_BOLD}"
 cat <<EOF
-  ###########################################
-  # SSPAGHETTY DIGITAL OCEAN NODE CONNECTOR #
-  ###########################################
+  #################################
+  #  SSPAGHETTY  NODE  CONNECTOR  #
+  #################################
 
   v0.5 by buzzgreyday (aka. hgtp_Michael)
   -------------------------------------------

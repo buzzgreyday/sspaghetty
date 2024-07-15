@@ -84,15 +84,31 @@ authenticate() {
 	if [ -n "$TOKEN" ]; then
 		echo "> $service_provider AUTHORIZATION TOKEN VERIFICATION"
 		echo
-		if [ "$1" == "hcloud" ]; then
-		  # Write the Hetzner logic here
-		  # shellcheck disable=SC2091
-		  if ! $(HCLOUD_TOKEN="${TOKEN}" hcloud context create sspaghetty-node <<<"Y"); then
-		    # "sspaghetty-node" should be the project name in Hetzner
-		    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
+    if [ "$1" == "hcloud" ]; then
+      # Export the HCLOUD_TOKEN environment variable
+      export HCLOUD_TOKEN="$TOKEN"
+      echo "Using hcloud with token: $HCLOUD_TOKEN"
+
+      # Use expect to handle the interactive part
+      expect << EOF
+        set timeout 10
+        spawn hcloud context create "Constellation"
+        expect {
+          "The HCLOUD_TOKEN environment variable is set. Do you want to use the token from HCLOUD_TOKEN for the new context? (Y/n): " { send "Y\r" }
+          timeout { exit 1 }
+        }
+        expect eof
+EOF
+
+      # Check if the expect script was successful
+      if [ $? -ne 0 ]; then
+        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
         echo -e "${NO_FORMAT}"
         exit 1
       fi
+
+      # Unset the HCLOUD_TOKEN environment variable
+      unset HCLOUD_TOKEN
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
@@ -117,12 +133,13 @@ authenticate() {
 		  # shellcheck disable=SC2091
 		  export HCLOUD_TOKEN="$TOKEN"
 		  echo "Using hcloud with token: $HCLOUD_TOKEN"
-		  if ! hcloud context create "MainnetValidatorNode"; then
+		  if ! hcloud context create "Constellation"; then
 		    # "sspaghetty-node" should be the project name in Hetzner
 		    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
         echo -e "${NO_FORMAT}"
         exit 1
       fi
+      unset HCLOUD_TOKEN
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
@@ -291,7 +308,7 @@ request_ssh_pass() {
 
 remove_cli_authorization() {
   if [ "$1" == "hcloud" ]; then
-    if ! hcloud context delete "sspaghetty-node"; then
+    if ! hcloud context delete "Constellation"; then
       unset HCLOUD_TOKEN
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}HETZNER AUTHORIZATION REMOVAL FAILED"
       echo "  EXITING..."
@@ -362,11 +379,11 @@ install_cli() {
   sudo chmod +x "$INSTALL_LOC/${1}"
   rm "${DOWNLOAD_LOC}/$(basename "$LATEST_CLI_VERSION")"
   request_ssh_pass
+  sudo apt install expect
   authenticate "$1"
   unset SSH_PASSWD
   node_values "${1}"
   remove_cli_authorization "${1}"
-  sudo apt install expect
   echo "> INSTALLATION/UPDATE COMPLETE!"
   echo
 }

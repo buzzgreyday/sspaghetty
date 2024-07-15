@@ -146,17 +146,18 @@ authenticate() {
 whitelist() {
   if [ "$2" == "hcloud" ]; then
     # FIREWALL_NAME="my-firewall-name"
-    if ! FIREWALL_NAME=$(hcloud firewall list -o columns=name | head -n 1); then
+    if ! FIREWALL_NAME=$(hcloud firewall list -o columns=name | tail -n 1); then
       # Will take the first name in the list, otherwise this would need configuration at installation
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL NAME REQUEST FAILED"
       error_exit
     fi
-    if ! FIREWALL_DATA=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}'); then
+    echo "NAME: $FIREWALL_NAME"
+    if ! FIREWALL_ID=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}'); then
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED"
       error_exit
     fi
-    FIREWALL_ID=$(echo "$FIREWALL_DATA" | grep "$FIREWALL_NAME" | awk '{print $1}')
-    echo "${FIREWALL_DATA}"
+
+    echo "ID: ${FIREWALL_ID}"
     if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
       NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
     fi
@@ -197,7 +198,7 @@ whitelist() {
         \"destination_ips\": [\"0.0.0.0/0\"]
       }
     ]" > "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
-    hcloud firewall update "${FIREWALL_DATA}" --rules-from-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
+    sudo hcloud firewall update "${FIREWALL_DATA}" --rules-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     rm -f "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     remove_cli_authorization "$2"
   else

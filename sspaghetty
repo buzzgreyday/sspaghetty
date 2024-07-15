@@ -15,6 +15,14 @@ C_INDIANRED1="\033[38;5;203m"
 C_DEEPSKYBLUE3="\033[38;5;32m"
 C_YELLOW1="\033[38;5;226m"
 C_CHARTREUSE3="\033[38;5;76m"
+C_GREY_CENSOR1="\033[38;5;234m"
+C_GREY_CENSOR2="\033[48;5;233m"
+
+error_exit() {
+  echo -e "  ${C_INDIANRED1}EXITING..."
+  echo -e "${NO_FORMAT}"
+  exit 1
+}
 
 encode() {
   if [ "$3" == "hcloud" ]; then
@@ -24,19 +32,15 @@ encode() {
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED: ${3} IS NOT A VALID COMMAND${NO_FORMAT}"
-    echo "  ${C_INDIANRED1}EXITING..."
-    echo -e "${NO_FORMAT}"
-    exit 1
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED: ${3} IS NOT A VALID COMMAND"
+    error_exit
   fi
   echo "> ENCODING $service_provider AUTHORIZATION TOKEN"
   if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$token_file" -pass pass:"$2" <<<"$1"; then
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED${NO_FORMAT}"
-    echo -e "  ${C_INDIANRED1}EXITING..."
-    echo -e "${NO_FORMAT}"
-    exit 1
+    error_exit
   fi
-  echo -e "  ${C_CHARTREUSE3}ENCODING COMPLETE!"
+  echo -e "  ${C_CHARTREUSE3}ENCODING COMPLETE"
   echo -e "${NO_FORMAT}"
 }
 
@@ -48,48 +52,23 @@ decode() {
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED: ${2} IS NOT A VALID COMMAND${NO_FORMAT}"
-		echo -e "  ${C_INDIANRED1}EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED: ${2} IS NOT A VALID COMMAND"
+		error_exit
   fi
 	echo "> DECODING $service_provider AUTHORIZATION TOKEN"
 	if ! TOKEN=$(openssl enc -d -aes-256-cbc -in "$token_file" -salt -pbkdf2 -pass pass:"$1"); then
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED${NO_FORMAT}"
-		echo -e "  ${C_INDIANRED1}EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
+		error_exit
 	fi
-	echo -e "  ${C_CHARTREUSE3}DECODING COMPLETE!"
+	echo -e "  ${C_CHARTREUSE3}DECODING COMPLETE"
 	echo -e "${NO_FORMAT}"
 }
 
-authenticate() {
-  if [ "$1" == "hcloud" ]; then
-    service_provider="HETZNER"
-    token_file="$HCLOUD_TOKEN_FILE"
-  elif [ "$1" == "doctl" ]; then
-    service_provider="DIGITAL OCEAN"
-    token_file="$DO_TOKEN_FILE"
-  else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND! ${NO_FORMAT}"
-    echo -e "  ${C_INDIANRED1}EXITING..."
-		echo -e "${NO_FORMAT}"
-    exit 1
-  fi
-
-	if [ -f "$token_file" ]; then
-		decode $SSH_PASSWD "$1"
-	fi
-	if [ -n "$TOKEN" ]; then
-		echo "> $service_provider AUTHORIZATION TOKEN VERIFICATION"
-		echo
-    if [ "$1" == "hcloud" ]; then
-      # Export the HCLOUD_TOKEN environment variable
+hetzner_create_context() {
+  # Export the HCLOUD_TOKEN environment variable
       export HCLOUD_TOKEN="$TOKEN"
-      echo "Using hcloud with token: $HCLOUD_TOKEN"
-
       # Use expect to handle the interactive part
+      echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
       expect << EOF
         set timeout 10
         spawn hcloud context create "Constellation"
@@ -102,56 +81,63 @@ EOF
 
       # Check if the expect script was successful
       if [ $? -ne 0 ]; then
-        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
-        echo -e "${NO_FORMAT}"
-        exit 1
+        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
+        error_exit
       fi
 
-      # Unset the HCLOUD_TOKEN environment variable
+      # Unset the HCLOUD_TOKEN environment variable and color
+      echo -ne "${NO_FORMAT}"
       unset HCLOUD_TOKEN
+}
+
+authenticate() {
+  if [ "$1" == "hcloud" ]; then
+    service_provider="HETZNER"
+    token_file="$HCLOUD_TOKEN_FILE"
+  elif [ "$1" == "doctl" ]; then
+    service_provider="DIGITAL OCEAN"
+    token_file="$DO_TOKEN_FILE"
+  else
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND"
+    error_exit
+  fi
+
+	if [ -f "$token_file" ]; then
+		decode $SSH_PASSWD "$1"
+	fi
+	if [ -n "$TOKEN" ]; then
+		echo "> $service_provider AUTHORIZATION TOKEN VERIFICATION"
+		echo
+    if [ "$1" == "hcloud" ]; then
+      hetzner_create_context
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
-        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
-        echo -e "${NO_FORMAT}"
-        exit 1
+        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
+        error_exit
       fi
     else
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND! ${NO_FORMAT}"
-      echo -e "  ${C_INDIANRED1}EXITING..."
-		  echo -e "${NO_FORMAT}"
-      exit 1
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND"
+      error_exit
     fi
 	else
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO $service_provider AUTHORIZATION TOKEN FOUND!${NO_FORMAT}"
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO $service_provider AUTHORIZATION TOKEN FOUND${NO_FORMAT}"
 		read -p "  AUTHORIZATION TOKEN: " -s TOKEN
 		echo -ne "                       "
 		obtain_superuser_permissions
 		encode "$TOKEN" "$SSH_PASSWD" "$1"
 		decode $SSH_PASSWD "$1"
 		if [ "$1" == "hcloud" ]; then
-		  # shellcheck disable=SC2091
-		  export HCLOUD_TOKEN="$TOKEN"
-		  echo "Using hcloud with token: $HCLOUD_TOKEN"
-		  if ! hcloud context create "Constellation"; then
-		    # "sspaghetty-node" should be the project name in Hetzner
-		    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
-        echo -e "${NO_FORMAT}"
-        exit 1
-      fi
-      unset HCLOUD_TOKEN
+		  hetzner_create_context
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
       if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
-        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
-        echo -e "${NO_FORMAT}"
-        exit 1
+        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
+        error_exit
       fi
     else
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND! ${NO_FORMAT}"
-      echo -e "  ${C_INDIANRED1}EXITING..."
-		  echo -e "${NO_FORMAT}"
-      exit 1
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND"
+      error_exit
     fi
 	fi
 	unset $TOKEN
@@ -160,18 +146,14 @@ EOF
 whitelist() {
   if [ "$2" == "hcloud" ]; then
     # FIREWALL_NAME="my-firewall-name"
-    if ! FIREWALL_NAME=$(hcloud firewall list -o columns=name,noheader | head -n 1); then
+    if ! FIREWALL_NAME=$(hcloud firewall list -o columns=name | head -n 1); then
       # Will take the first name in the list, otherwise this would need configuration at installation
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL NAME REQUEST FAILED!"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL NAME REQUEST FAILED"
+      error_exit
     fi
     if ! FIREWALL_DATA=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}'); then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED!"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED"
+      error_exit
     fi
     FIREWALL_ID=$(echo "$FIREWALL_DATA" | grep "$FIREWALL_NAME" | awk '{print $1}')
     echo "${FIREWALL_DATA}"
@@ -215,16 +197,14 @@ whitelist() {
         \"destination_ips\": [\"0.0.0.0/0\"]
       }
     ]" > "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
-    hcloud firewall update-rules "${FIREWALL_DATA}" --rules-from-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
+    hcloud firewall update "${FIREWALL_DATA}" --rules-from-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     rm -f "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
     remove_cli_authorization "$2"
   else
     # Update firewall with CURRENT_IP using doctl
     if ! FIREWALL_DATA=$(doctl compute firewall list); then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED!"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED"
+      error_exit
     fi
     FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
     FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
@@ -232,10 +212,8 @@ whitelist() {
       NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
     fi
     if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${NODE_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1; then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED!"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED"
+      error_exit
     fi
   fi
 	remove_cli_authorization "$2"
@@ -245,16 +223,13 @@ check_ip() {
 	if check_network_connection; then
 		# Fetch current IP address
 		if ! CURRENT_IP=$(curl -s http://ipv4.icanhazip.com/); then
-			echo -e "${C_INDIANRED1}> ${F_UNDERLINED}OBTAINING IP FAILED!"
-			echo "  EXITING..."
-			echo -e "${NO_FORMAT}"
-			exit 1
+			echo -e "${C_INDIANRED1}> ${F_UNDERLINED}OBTAINING IP FAILED"
+			error_exit
 		fi
 	else
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
-		echo "  COULD NOT RETRIEVE YOUR CURRENT IP. EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION"
+		echo "  COULD NOT RETRIEVE YOUR CURRENT IP"
+		error_exit
 	fi
 	if [ ! -d "$TMP_DIR" ]; then
 		mkdir "$TMP_DIR"
@@ -308,26 +283,22 @@ request_ssh_pass() {
 
 remove_cli_authorization() {
   if [ "$1" == "hcloud" ]; then
+    echo -e "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
     if ! hcloud context delete "Constellation"; then
       unset HCLOUD_TOKEN
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}HETZNER AUTHORIZATION REMOVAL FAILED"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+      error_exit
     fi
+    echo -e "${NO_FORMAT}"
     unset HCLOUD_TOKEN
   elif [ "$1" == "doctl" ]; then
     if ! doctl auth remove --context default &>/dev/null; then
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN AUTHORIZATION REMOVAL FAILED"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+      error_exit
     fi
   else
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED: ${1} IS NOT A VALID COMMAND"
-    echo "  EXITING..."
-    echo -e "${NO_FORMAT}"
-    exit 1
+    error_exit
   fi
 
 }
@@ -340,46 +311,41 @@ install_cli() {
 	  service_provider="HETZNER"
 	  echo "> DOWNLOADING ${service_provider} CLI"
 	  if ! LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/hetznercloud/cli/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
-	    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLOUD CLI VERSION REQUEST FAILED!"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+	    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLOUD CLI VERSION REQUEST FAILED"
+      error_exit
     fi
 	elif [ "$1" == "doctl" ]; then
 	  service_provider="DIGITAL OCEAN"
     echo "> DOWNLOADING ${service_provider} CLI"
     if ! LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLI VERSION REQUEST FAILED!"
-      echo "  EXITING..."
-      echo -e "${NO_FORMAT}"
-      exit 1
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLI VERSION REQUEST FAILED"
+      error_exit
     fi
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A COMMAND!"
-    exit 1
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A COMMAND"
+    error_exit
   fi
   # shellcheck disable=SC2091
   if ! $(wget -q "$LATEST_CLI_VERSION" -P "$DOWNLOAD_LOC"); then
     echo "> ${service_provider} CLI DOWNLOAD FAILED"
-    echo "  EXITING..."
-    echo
-    exit 1
+    error_exit
   fi
   echo "> INSTALLING ${service_provider} CLI"
   echo
-  echo "${DOWNLOAD_LOC}/$(basename "${LATEST_CLI_VERSION}")"
   obtain_superuser_permissions
+  echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
   if ! sudo tar xf "${DOWNLOAD_LOC}/$(basename "${LATEST_CLI_VERSION}")" -C "${INSTALL_LOC}"; then
     echo "> ${service_provider} CLI EXTRACTION FAILED"
-    echo "  EXITING..."
-    echo
-    exit 1
+    error_exit
   fi
   # sudo mv "${DOWNLOAD_LOC}/${1}" "$INSTALL_LOC"
   sudo chmod +x "$INSTALL_LOC/${1}"
   rm "${DOWNLOAD_LOC}/$(basename "$LATEST_CLI_VERSION")"
+  echo -ne "${NO_FORMAT}"
   request_ssh_pass
+  echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
   sudo apt install expect
+  echo -ne "${NO_FORMAT}"
   authenticate "$1"
   unset SSH_PASSWD
   node_values "${1}"
@@ -395,9 +361,7 @@ uninstall() {
     service_provider="DIGITAL OCEAN"
   else
     echo "> ${service_provider} UNINSTALL FAILED: ${1} IS NOT A VALID COMMAND"
-    echo "  EXITING..."
-    echo
-    exit 1
+    error_exit
   fi
 	echo "> UNINSTALLING ${service_provider} NODE SCRIPT"
 	echo "  REMOVING STORED IP DATA"
@@ -481,11 +445,10 @@ escape_string() {
 connect() {
 	node_values
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
+	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
 	if ! expect -c "spawn ssh -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT};expect \"Enter passphrase\";send \"${SSH_PASSWD}\r\";interact"; then
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH CONNECTION FAILED!"
-		echo "  EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH CONNECTION FAILED"
+		error_exit
 	fi
 }
 
@@ -511,11 +474,8 @@ case "${1}" in
 	if check_network_connection; then
 		install_cli "${2}"
 	else
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
-		echo "  EXITING..."
-		echo
-		echo -e "${NO_FORMAT}"
-		exit 1
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION"
+		error_exit
 	fi
 	;;
 "connect")
@@ -527,15 +487,12 @@ case "${1}" in
 		unset SSH_PASSWD
 		remove_cli_authorization "${2}"
 	else
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION!"
-		echo "  EXITING..."
-		echo -e "${NO_FORMAT}"
-		exit 1
+		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION"
+		error_exit
 	fi
 	;;
 *)
-	echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NOT A VALID COMMAND!"
-	echo -e "${NO_FORMAT}"
-	exit 1
+	echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NOT A VALID COMMAND"
+	error_exit
 	;;
 esac

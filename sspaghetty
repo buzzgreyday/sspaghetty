@@ -30,9 +30,9 @@ encode() {
     exit 1
   fi
   echo "> ENCODING $service_provider AUTHORIZATION TOKEN"
-  if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$NODE_SCRIPT_HOME/$token_file" -pass pass:"$2" <<<"$1"; then
+  if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$token_file" -pass pass:"$2" <<<"$1"; then
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED${NO_FORMAT}"
-    echo "  ${C_INDIANRED1}EXITING..."
+    echo -e "  ${C_INDIANRED1}EXITING..."
     echo -e "${NO_FORMAT}"
     exit 1
   fi
@@ -54,7 +54,7 @@ decode() {
 		exit 1
   fi
 	echo "> DECODING $service_provider AUTHORIZATION TOKEN"
-	if ! TOKEN=$(openssl enc -d -aes-256-cbc -in "$NODE_SCRIPT_HOME/$token_file" -salt -pbkdf2 -pass pass:"$1"); then
+	if ! TOKEN=$(openssl enc -d -aes-256-cbc -in "$token_file" -salt -pbkdf2 -pass pass:"$1"); then
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED${NO_FORMAT}"
 		echo -e "  ${C_INDIANRED1}EXITING..."
 		echo -e "${NO_FORMAT}"
@@ -115,7 +115,9 @@ authenticate() {
 		decode $SSH_PASSWD "$1"
 		if [ "$1" == "hcloud" ]; then
 		  # shellcheck disable=SC2091
-		  if ! $(HCLOUD_TOKEN="${TOKEN}" hcloud context create sspaghetty-node <<<"Y"); then
+		  export HCLOUD_TOKEN="$TOKEN"
+		  echo "Using hcloud with token: $HCLOUD_TOKEN"
+		  if ! hcloud context create "MainnetValidatorNode"; then
 		    # "sspaghetty-node" should be the project name in Hetzner
 		    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED!"
         echo -e "${NO_FORMAT}"

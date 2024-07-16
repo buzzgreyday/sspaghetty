@@ -459,15 +459,13 @@ EOF
 
 }
 
+echo -e "${F_BOLD}"
 cat <<EOF
-  #######################################
-  #    SSPAGHETTY   NODE   CONNECTOR    #
-  #######################################
-  Hetzner and Digital Ocean supported
-  v0.6 by buzzgreyday (aka. hgtp_Michael)
-  ---------------------------------------
+  SSPAGHETTY v0.6
+  by Buzz Greyday (aka. hgtp_Michael)
+  -------------------------------------------
 EOF
-
+echo -e "${NO_FORMAT}"
 # Example process to run (replace with your actual command)
 example_process() {
     sleep 10 # Simulate a process running for 10 seconds

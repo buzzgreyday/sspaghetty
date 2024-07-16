@@ -38,3 +38,12 @@ sspaghetty connect doctl
 ```
 sspaghetty connect hcloud
 ```
+### 4. Uninstall
+*Digital Ocean Server*
+```
+sspaghetty uninstall doctl && rm -f ~/.local/bin/sspaghetty
+```
+*Hetzner Server*
+```
+sspaghetty uninstall hcloud && rm -f ~/.local/bin/sspaghetty
+```

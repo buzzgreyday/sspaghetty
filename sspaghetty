@@ -440,11 +440,11 @@ escape_string() {
 }
 
 connect() {
-  if [[ ! -f ${NODE_SSH_ID} ]]; then
+	node_values
+	if [[ ! -f ${NODE_SSH_ID} ]]; then
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH KEY \"${NODE_SSH_ID}\" NOT FOUND"
     exit 1
   fi
-	node_values
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
 	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
 	expect << EOF

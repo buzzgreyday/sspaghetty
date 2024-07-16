@@ -41,10 +41,10 @@ encode() {
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED} \"${3}\" IS NOT A VALID COMMAND"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED} \"${3}\" IS NOT A VALID COMMAND${NO_FORMAT}"
     error_exit
   fi
-  echo -e "${C_DEEPSKYBLUE3}> ENCODING $service_provider AUTHORIZATION TOKEN"
+  echo -e "${C_DEEPSKYBLUE3}> ENCODING $service_provider AUTHORIZATION TOKEN${NO_FORMAT}"
   sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$token_file" -pass pass:"$2" <<<"$1"
   verify_execution "ENCODING COMPLETE" "ENCODING FAILED"
 }
@@ -57,10 +57,11 @@ decode() {
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED: ${2} IS NOT A VALID COMMAND"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${2}\" IS NOT A VALID COMMAND"
 		error_exit
   fi
-	echo -e "${C_DEEPSKYBLUE3}> DECODING $service_provider AUTHORIZATION TOKEN"
+	echo -e "${C_DEEPSKYBLUE3}> DECODING $service_provider AUTHORIZATION TOKEN${NO_FORMAT}"
+	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
 	TOKEN=$(openssl enc -d -aes-256-cbc -in "$token_file" -salt -pbkdf2 -pass pass:"$1")
 	verify_execution "DECODING COMPLETE" "DECODING FAILED"
 }
@@ -113,7 +114,7 @@ authenticate() {
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO $service_provider AUTHORIZATION TOKEN FOUND${NO_FORMAT}"
 		read -p "  AUTHORIZATION TOKEN: " -s TOKEN
-		echo -ne "                       "
+		echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 		obtain_superuser_permissions
 		encode "$TOKEN" "$SSH_PASSWD" "$1"
 		decode $SSH_PASSWD "$1"
@@ -122,7 +123,7 @@ authenticate() {
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
       doctl auth init -t "$TOKEN" &>/dev/null
-      verify_execution "TOKEN VERIFICATION COMPLET" "TOKEN VERIFICATION FAILED"
+      verify_execution "TOKEN VERIFICATION COMPLETE" "TOKEN VERIFICATION FAILED"
     else
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A VALID COMMAND"
       error_exit
@@ -283,14 +284,14 @@ check_network_connection() {
 
 obtain_superuser_permissions() {
 	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS${NO_FORMAT}"
-	echo -ne "                              "
+	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 	sudo ls /root &>/dev/null
 }
 
 request_ssh_pass() {
 	echo -e "${C_DEEPSKYBLUE3}> ${F_UNDERLINED}SSH IDENTITY PASSWORD:${NO_FORMAT}"
 	read -p "  " -s SSH_PASSWD
-	echo -ne "                        "
+	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 }
 
 remove_cli_authorization() {
@@ -441,7 +442,6 @@ escape_string() {
 connect() {
   if [[ ! -f ${NODE_SSH_ID} ]]; then
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH KEY \"${NODE_SSH_ID}\" NOT FOUND"
-    echo "Error: SSH key file ${NODE_SSH_ID} not found."
     exit 1
   fi
 	node_values

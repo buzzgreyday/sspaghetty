@@ -3,7 +3,7 @@
 ## Requirements
 
 * Ubuntu
-* Maximum one server running on either Digital Ocean or Hetzners.
+* Max one Digital Ocean or Hetzner server
 
 ## Getting started
 

@@ -35,6 +35,9 @@ sspaghetty install doctl
 sspaghetty install hcloud
 ```
 ### 3. Connect to server
+
+These commands are used to connect to your node via ssh.
+
 **Connect to Digital Ocean**
 ```
 sspaghetty connect doctl
@@ -43,7 +46,7 @@ sspaghetty connect doctl
 ```
 sspaghetty connect hcloud
 ```
-### 4. Uninstall
+### Uninstall
 **Uninstall for Digital Ocean**
 ```
 sspaghetty uninstall doctl && rm -f ~/.local/bin/sspaghetty

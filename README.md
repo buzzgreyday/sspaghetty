@@ -14,11 +14,11 @@ This script will automatically handle ssh connection to your Constellation Valid
 
 The script is in an early stage. Therefore, __**the script will most likely not behave as expected if you have multiple projects, servers and/or firewalls on Digital Ocean and/or Hetzner.**__ Support for multiple projects, server and/or firewalls will likely follow in the future.
 
-**1a. Digital Ocean**
+**Digital Ocean**
 
 Setup your Digital Ocean project, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 
-**1b. Hetzner**
+**Hetzner**
 
 Setup your Hetzner project __**name (or rename) the project `Constellation`**__, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 

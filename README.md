@@ -6,15 +6,15 @@
 * __**Ubuntu PC/Mac**__
 * __**Max one Digital Ocean or Hetzner server**__
 
-## Getting started
+### Getting started
 
 The script is in an early stage. Therefore, __**the script will most likely not behave as expected if you have multiple projects, servers and/or firewalls on Digital Ocean and/or Hetzner.**__ Support for multiple projects, server and/or firewalls, and different Operative systems, will likely follow in the future.
 
-### 1a. Digital Ocean Server
+**1a. Digital Ocean**
 
 Setup your Digital Ocean project, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 
-### 1b. Hetzner Server
+**1b. Hetzner**
 
 Setup your Hetzner project __**name (or rename) the project `Constellation`**__, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 

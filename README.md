@@ -19,5 +19,22 @@ Setup your Hetzner project name (or rename) it `Constellation`, deploy your serv
 
 ### 2. Download and Install
 ```
-wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty
+wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty && chmod +x sspaghetty && mkdir -p ~/.local/bin && mv sspaghetty ~/.local/bin
+```
+*Digital Ocean Server*
+```
+sspaghetty install doctl
+```
+*Hetzner Server*
+```
+sspaghetty install hcloud
+```
+### 3. Connect to server
+*Digital Ocean Server*
+```
+sspaghetty connect doctl
+```
+*Hetzner Server*
+```
+sspaghetty connect hcloud
 ```

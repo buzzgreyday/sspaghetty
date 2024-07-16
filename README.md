@@ -18,4 +18,4 @@ Setup your Digital Ocean project, deploy your server and setup the firewall rule
 Setup your Hetzner project name (or rename) it `Constellation`, deploy your server and setup the firewall rules.
 
 ### 2. Download and Install
-
+```wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty```

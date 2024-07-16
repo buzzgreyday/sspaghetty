@@ -39,7 +39,7 @@ sspaghetty install hcloud
 ```
 ### 3. Connect to server
 
-The commands below are used to connect to your node via ssh. These are used to connect to the Validator Node.
+This step is used to connect to the Validator Node and is repeated any time you wish to connect to your Validator Node.
 
 **Connect to Digital Ocean**
 ```

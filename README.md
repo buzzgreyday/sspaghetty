@@ -16,7 +16,7 @@ Setup your Digital Ocean project, deploy your server and setup the firewall rule
 
 ### 1b. Hetzner Server
 
-Setup your Hetzner project name (or rename) it `Constellation`, deploy your server and setup the firewall rules. Create an API token with read and write permissions.
+Setup your Hetzner project __**name (or rename) it `Constellation`**__, deploy your server and setup the firewall rules. Create an API token with read and write permissions.
 
 ### 2. Download and Install
 ```

@@ -26,7 +26,7 @@ wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty &&
 ```
 sspaghetty install doctl
 ```
-**Install Hetzner**
+**Install for Hetzner**
 ```
 sspaghetty install hcloud
 ```

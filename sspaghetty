@@ -26,7 +26,7 @@ error_exit() {
 
 verify_execution() {
   if [ $? -ne 0 ]; then
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${2}${NO_FORMAT}"
+    echo -e "${C_INDIANRED1}  ${F_UNDERLINED}${2}${NO_FORMAT}"
     error_exit
   else
     echo -e "  ${C_CHARTREUSE3}${1}${NO_FORMAT}"
@@ -41,10 +41,10 @@ encode() {
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED: ${3} IS NOT A VALID COMMAND"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED} \"${3}\" IS NOT A VALID COMMAND"
     error_exit
   fi
-  echo "> ENCODING $service_provider AUTHORIZATION TOKEN"
+  echo -e "${C_DEEPSKYBLUE3}> ENCODING $service_provider AUTHORIZATION TOKEN"
   sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$token_file" -pass pass:"$2" <<<"$1"
   verify_execution "ENCODING COMPLETE" "ENCODING FAILED"
 }
@@ -60,7 +60,7 @@ decode() {
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED: ${2} IS NOT A VALID COMMAND"
 		error_exit
   fi
-	echo "> DECODING $service_provider AUTHORIZATION TOKEN"
+	echo -e "${C_DEEPSKYBLUE3}> DECODING $service_provider AUTHORIZATION TOKEN"
 	TOKEN=$(openssl enc -d -aes-256-cbc -in "$token_file" -salt -pbkdf2 -pass pass:"$1")
 	verify_execution "DECODING COMPLETE" "DECODING FAILED"
 }
@@ -99,8 +99,7 @@ authenticate() {
 		decode $SSH_PASSWD "$1"
 	fi
 	if [ -n "$TOKEN" ]; then
-		echo "> $service_provider AUTHORIZATION TOKEN VERIFICATION"
-		echo
+		echo -e "${C_DEEPSKYBLUE3}> $service_provider AUTHORIZATION TOKEN VERIFICATION"
     if [ "$1" == "hcloud" ]; then
       hetzner_create_context
 		elif [ "$1" == "doctl" ]; then
@@ -213,6 +212,7 @@ whitelist() {
     echo "${json_data}" > "${TMP_DIR}/hetzner_firewall_rules.json"
     echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
     hcloud firewall replace-rules "${FIREWALL_ID}" --rules-file "${TMP_DIR}/hetzner_firewall_rules.json" --quiet
+    verify_execution "FIREWALL UPDATE COMPLETE" "FIREWALL UPDATE FAILED"
     unset FIREWALL_NAME FIREWALL_ID
     rm -f "${TMP_DIR}/hetzner_firewall_rules.json"
     remove_cli_authorization "$2"
@@ -227,10 +227,8 @@ whitelist() {
     if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
       NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
     fi
-    if ! doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${NODE_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1; then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL UPDATE FAILED"
-      error_exit
-    fi
+    doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${NODE_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1
+    verify_execution "FIREWALL UPDATE COMPLET" "FIREWALL UPDATE FAILED"
   fi
 	remove_cli_authorization "$2"
 }
@@ -244,7 +242,6 @@ check_ip() {
 		fi
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION"
-		echo "  COULD NOT RETRIEVE YOUR CURRENT IP"
 		error_exit
 	fi
 	if [ ! -d "$TMP_DIR" ]; then
@@ -256,21 +253,21 @@ check_ip() {
 		# Compare current IP with last known IP
 		if [ "$CURRENT_IP" != "$LAST_IP" ]; then
 			echo -e "${C_YELLOW1}> ${F_UNDERLINED}IP HAS CHANGED${NO_FORMAT}"
-			echo -e "  ${C_YELLOW1}UPDATING FIREWALL RULES..."
+			echo -e "  ${C_YELLOW1}PLEASE WAIT, UPDATING FIREWALL RULES"
 			echo
 			whitelist "$CURRENT_IP" "${1}"
 			# If succesful update the last IP file
 			echo "$CURRENT_IP" >"$IP_FILE"
 		else
-			echo "> IP REMAINS UNCHANGED"
-			echo "  CONTINUING WITHOUT UPDATING FIREWALL RULES..."
+			echo -e "${C_CHARTREUSE3}> ${F_UNDERLINED}IP REMAINS UNCHANGED${NO_FORMAT}"
+			echo -e "  ${C_CHARTREUSE3}CONTINUING WITHOUT UPDATING FIREWALL RULES"
 			echo
 			remove_cli_authorization "${1}"
 		fi
 	else
-		echo "> SAVING CURRENT IP"
+		echo -e "${C_DEEPSKYBLUE3}> ${F_UNDERLINED}SAVING CURRENT IP${NO_FORMAT}"
 		echo "$CURRENT_IP" >"$IP_FILE"
-		echo "  UPDATING FIREWALL RULES..."
+		echo -e "  ${C_YELLOW1}PLEASE WAIT, UPDATING FIREWALL RULES"
 		echo
 		whitelist "$CURRENT_IP" "${1}"
 	fi
@@ -278,21 +275,20 @@ check_ip() {
 
 check_network_connection() {
 	if ping -c 1 8.8.8.8 &>/dev/null; then
-		return 0 # Success
+		return 0
 	else
-		return 1 # Failure
+		return 1
 	fi
 }
 
 obtain_superuser_permissions() {
-	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS"
-	echo -ne " "
+	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS${NO_FORMAT}"
+	echo -ne "                              "
 	sudo ls /root &>/dev/null
-	echo -e "${NO_FORMAT}"
 }
 
 request_ssh_pass() {
-	echo "> SSH IDENTITY PASSWORD:"
+	echo -e "${C_DEEPSKYBLUE3}> ${F_UNDERLINED}SSH IDENTITY PASSWORD:${NO_FORMAT}"
 	read -p "  " -s SSH_PASSWD
 	echo -ne "                        "
 }
@@ -301,15 +297,13 @@ remove_cli_authorization() {
   if [ "$1" == "hcloud" ]; then
     echo -e "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
     hcloud context delete "Constellation" 2>/dev/null
-    echo -e "${NO_FORMAT}"
+    verify_execution "HETZNER CONTEXT DELETION COMPLETE" "HETZNER CONTEXT DELETION FAILED"
     unset HCLOUD_TOKEN
   elif [ "$1" == "doctl" ]; then
-    if ! doctl auth remove --context default 2>/dev/null; then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN AUTHORIZATION REMOVAL FAILED"
-      error_exit
-    fi
+    doctl auth remove --context default 2>/dev/null
+    verify_execution "DIGITAL OCEAN CONTEXT DELETION COMPLETE" "DIGITAL OCEAN CONTEXT DELETION FAILED"
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}AUTHORIZATION REMOVAL FAILED: ${1} IS NOT A VALID COMMAND"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A VALID COMMAND"
     error_exit
   fi
 
@@ -321,36 +315,26 @@ install_cli() {
 	fi
 	if [ "$1" == "hcloud" ]; then
 	  service_provider="HETZNER"
-	  echo "> DOWNLOADING ${service_provider} CLI"
-	  if ! LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/hetznercloud/cli/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
-	    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLOUD CLI VERSION REQUEST FAILED"
-      error_exit
-    fi
+	  echo -e "${C_DEEPSKYBLUE3}> DOWNLOADING ${service_provider} CLI"
+	  LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/hetznercloud/cli/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"
+
 	elif [ "$1" == "doctl" ]; then
 	  service_provider="DIGITAL OCEAN"
-    echo "> DOWNLOADING ${service_provider} CLI"
-    if ! LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"; then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${service_provider} CLI VERSION REQUEST FAILED"
-      error_exit
-    fi
+    echo -e "${C_DEEPSKYBLUE3}> DOWNLOADING ${service_provider} CLI"
+    LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/digitalocean/doctl/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"
   else
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A COMMAND"
     error_exit
   fi
-  # shellcheck disable=SC2091
-  if ! $(wget -q "$LATEST_CLI_VERSION" -P "$DOWNLOAD_LOC"); then
-    echo "> ${service_provider} CLI DOWNLOAD FAILED"
-    error_exit
-  fi
-  echo "> INSTALLING ${service_provider} CLI"
+  verify_execution "${service_provider} CLOUD CLI VERSION REQUEST COMPLETE" "${service_provider} CLOUD CLI VERSION REQUEST FAILED"
+  wget -q "$LATEST_CLI_VERSION" -P "$DOWNLOAD_LOC"
+  verify_execution "${service_provider} CLI DOWNLOAD FAILED" "${service_provider} CLI DOWNLOAD FAILED"
+  echo -e "${C_DEEPSKYBLUE3}> INSTALLING ${service_provider} CLI"
   echo
   obtain_superuser_permissions
   echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
-  if ! sudo tar xf "${DOWNLOAD_LOC}/$(basename "${LATEST_CLI_VERSION}")" -C "${INSTALL_LOC}"; then
-    echo "> ${service_provider} CLI EXTRACTION FAILED"
-    error_exit
-  fi
-  # sudo mv "${DOWNLOAD_LOC}/${1}" "$INSTALL_LOC"
+  sudo tar xf "${DOWNLOAD_LOC}/$(basename "${LATEST_CLI_VERSION}")" -C "${INSTALL_LOC}"
+  verify_execution "${service_provider} CLI DOWNLOAD COMPLETE" "${service_provider} CLI EXTRACTION FAILED"
   sudo chmod +x "$INSTALL_LOC/${1}"
   rm "${DOWNLOAD_LOC}/$(basename "$LATEST_CLI_VERSION")"
   echo -ne "${NO_FORMAT}"
@@ -362,7 +346,7 @@ install_cli() {
   unset SSH_PASSWD
   node_values "${1}"
   remove_cli_authorization "${1}"
-  echo -e "${C_CHARTREUSE3}> INSTALLATION/UPDATE COMPLETE!"
+  echo -e "${C_CHARTREUSE3}> INSTALLATION COMPLETE${NO_FORMAT}"
   echo
 }
 
@@ -372,10 +356,10 @@ uninstall() {
   elif [ "$1" == "doctl" ]; then
     service_provider="DIGITAL OCEAN"
   else
-    echo "> ${service_provider} UNINSTALL FAILED: ${1} IS NOT A VALID COMMAND"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A VALID COMMAND${NO_FORMAT}"
     error_exit
   fi
-	echo "> UNINSTALLING ${service_provider} NODE SCRIPT"
+	echo -e "${C_DEEPSKYBLUE3}> UNINSTALLING"
 	echo "  REMOVING STORED IP DATA"
 	rm -f "$IP_FILE"
 	echo "  REMOVING $service_provider CLI INSTALLATION"
@@ -385,7 +369,7 @@ uninstall() {
 	sudo rm -f "$INSTALL_LOC/${1}"
 	sudo rm -rf "$NODE_SCRIPT_HOME"
 	sudo apt remove expect
-	echo "> UNINSTALL COMPLETE!"
+	echo -e "${C_DEEPSKYBLUE3}> ${F_UNDERLINED}UNINSTALL COMPLETE${NO_FORMAT}"
 	echo
 	exit 0
 }

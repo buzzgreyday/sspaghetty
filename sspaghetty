@@ -66,28 +66,28 @@ decode() {
 
 hetzner_create_context() {
   # Export the HCLOUD_TOKEN environment variable
-      export HCLOUD_TOKEN="$TOKEN"
-      # Use expect to handle the interactive part
-      echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
-      expect << EOF
-        set timeout 10
-        spawn hcloud context create "Constellation"
-        expect {
-          "The HCLOUD_TOKEN environment variable is set. Do you want to use the token from HCLOUD_TOKEN for the new context? (Y/n): " { send "Y\r" }
-          timeout { exit 1 }
-        }
-        expect eof
+  export HCLOUD_TOKEN="$TOKEN"
+  # Use expect to handle the interactive part
+  echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
+  expect << EOF
+    set timeout 10
+    spawn hcloud context create "Constellation"
+    expect {
+      "The HCLOUD_TOKEN environment variable is set. Do you want to use the token from HCLOUD_TOKEN for the new context? (Y/n): " { send "Y\r" }
+      "Are you sure you want to continue connecting (yes/no/[fingerprint])? " { send "yes\r" }
+      timeout { exit 1 }
+    }
+    expect eof
 EOF
 
-      # Check if the expect script was successful
-      if [ $? -ne 0 ]; then
-        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
-        error_exit
-      fi
-
-      # Unset the HCLOUD_TOKEN environment variable and color
-      echo -ne "${NO_FORMAT}"
-      unset HCLOUD_TOKEN
+  # Check if the expect script was successful
+  if [ $? -ne 0 ]; then
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
+    error_exit
+  fi
+  # Unset the HCLOUD_TOKEN environment variable and color
+  echo -ne "${NO_FORMAT}"
+  unset HCLOUD_TOKEN
 }
 
 authenticate() {
@@ -151,55 +151,86 @@ whitelist() {
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL NAME REQUEST FAILED"
       error_exit
     fi
-    echo "NAME: $FIREWALL_NAME"
     if ! FIREWALL_ID=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}'); then
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED"
       error_exit
     fi
 
-    echo "ID: ${FIREWALL_ID}"
     if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
       NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
     fi
-    echo "[
+
+    # hcloud firewall describe ${FIREWALL_ID} -o json | jq . > current_firewall.json
+    json_data="[
       {
         \"direction\": \"in\",
         \"protocol\": \"tcp\",
         \"port\": \"${NODE_SSH_PORT}\",
-        \"source_ips\": [\"${1}/32\"]
+        \"source_ips\": [\"${1}/32\"],
+        \"destination_ips\": [],
+        \"description\": null
       },
       {
         \"direction\": \"in\",
         \"protocol\": \"tcp\",
         \"port\": \"9000-9001\",
-        \"source_ips\": [\"0.0.0.0/0\"]
+        \"source_ips\": [
+          \"0.0.0.0/0\",
+          \"::/0\"
+          ],
+        \"destination_ips\": [],
+        \"description\": null
       },
       {
         \"direction\": \"in\",
         \"protocol\": \"tcp\",
         \"port\": \"9010-9011\",
-        \"source_ips\": [\"0.0.0.0/0\"]
+        \"source_ips\": [
+          \"0.0.0.0/0\",
+          \"::/0\"
+          ],
+        \"destination_ips\": [],
+        \"description\": null
       },
       {
         \"direction\": \"out\",
+        \"source_ips\": [],
+        \"destination_ips\": [
+          \"0.0.0.0/0\",
+          \"::/0\"
+          ],
         \"protocol\": \"tcp\",
         \"port\": \"any\",
-        \"destination_ips\": [\"0.0.0.0/0\"]
+        \"description\": null
       },
       {
         \"direction\": \"out\",
+        \"source_ips\": [],
+        \"destination_ips\": [
+          \"0.0.0.0/0\",
+          \"::/0\"
+          ],
         \"protocol\": \"udp\",
         \"port\": \"any\",
-        \"destination_ips\": [\"0.0.0.0/0\"]
+        \"description\": null
       },
       {
         \"direction\": \"out\",
+        \"source_ips\": [],
+        \"destination_ips\": [
+          \"0.0.0.0/0\",
+          \"::/0\"
+          ],
         \"protocol\": \"icmp\",
-        \"destination_ips\": [\"0.0.0.0/0\"]
+        \"port\": null,
+        \"description\": null
       }
-    ]" > "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
-    sudo hcloud firewall update "${FIREWALL_DATA}" --rules-file "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
-    rm -f "${NODE_SCRIPT_HOME}/hetzner_firewall_rules.json"
+    ]"
+    # Write JSON to file
+    echo "${json_data}" > "${TMP_DIR}/hetzner_firewall_rules.json"
+    echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
+    hcloud firewall replace-rules "${FIREWALL_ID}" --rules-file "${TMP_DIR}/hetzner_firewall_rules.json" --quiet
+    rm -f "${TMP_DIR}/hetzner_firewall_rules.json"
     remove_cli_authorization "$2"
   else
     # Update firewall with CURRENT_IP using doctl
@@ -285,15 +316,11 @@ request_ssh_pass() {
 remove_cli_authorization() {
   if [ "$1" == "hcloud" ]; then
     echo -e "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
-    if ! hcloud context delete "Constellation"; then
-      unset HCLOUD_TOKEN
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}HETZNER AUTHORIZATION REMOVAL FAILED"
-      error_exit
-    fi
+    hcloud context delete "Constellation" 2>/dev/null
     echo -e "${NO_FORMAT}"
     unset HCLOUD_TOKEN
   elif [ "$1" == "doctl" ]; then
-    if ! doctl auth remove --context default &>/dev/null; then
+    if ! doctl auth remove --context default 2>/dev/null; then
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DIGITAL OCEAN AUTHORIZATION REMOVAL FAILED"
       error_exit
     fi

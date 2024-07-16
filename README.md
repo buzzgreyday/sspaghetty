@@ -3,7 +3,7 @@
 
 ## Requirements
 
-* Ubuntu
+* Ubuntu PC/Mac
 * Max one Digital Ocean or Hetzner server
 
 ## Getting started

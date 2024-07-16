@@ -23,6 +23,9 @@ Setup your Digital Ocean project, deploy your server and __**setup the firewall 
 Setup your Hetzner project __**name (or rename) the project `Constellation`**__, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 
 ### 2. Download and Install
+
+This step only has to be done once.
+
 ```
 wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty && chmod +x sspaghetty && mkdir -p ~/.local/bin && mv sspaghetty ~/.local/bin
 ```
@@ -36,7 +39,7 @@ sspaghetty install hcloud
 ```
 ### 3. Connect to server
 
-These commands are used to connect to your node via ssh.
+The commands below are used to connect to your node via ssh. These are used to connect to the Validator Node.
 
 **Connect to Digital Ocean**
 ```

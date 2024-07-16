@@ -1,3 +1,4 @@
+![Alt text](https://www.publicdomainpictures.net/pictures/70000/velka/cooked-fresh-spaghetti-1389122074pCK.jpg)
 # Sspaghetty
 
 ## Requirements

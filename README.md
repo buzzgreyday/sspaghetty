@@ -12,39 +12,39 @@ The script is in an early stage. Therefore, __**the script will most likely not 
 
 ### 1a. Digital Ocean Server
 
-Setup your Digital Ocean project, deploy your server and setup the firewall rules. Create an API token with read and write permissions.
+Setup your Digital Ocean project, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 
 ### 1b. Hetzner Server
 
-Setup your Hetzner project __**name (or rename) the project `Constellation`**__, deploy your server and setup the firewall rules. Create an API token with read and write permissions.
+Setup your Hetzner project __**name (or rename) the project `Constellation`**__, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 
 ### 2. Download and Install
 ```
 wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty && chmod +x sspaghetty && mkdir -p ~/.local/bin && mv sspaghetty ~/.local/bin
 ```
-*Digital Ocean Server*
+**Digital Ocean Server**
 ```
 sspaghetty install doctl
 ```
-*Hetzner Server*
+**Hetzner Server**
 ```
 sspaghetty install hcloud
 ```
 ### 3. Connect to server
-*Digital Ocean Server*
+**Digital Ocean Server**
 ```
 sspaghetty connect doctl
 ```
-*Hetzner Server*
+**Hetzner Server**
 ```
 sspaghetty connect hcloud
 ```
 ### 4. Uninstall
-*Digital Ocean Server*
+**Digital Ocean Server**
 ```
 sspaghetty uninstall doctl && rm -f ~/.local/bin/sspaghetty
 ```
-*Hetzner Server*
+**Hetzner Server**
 ```
 sspaghetty uninstall hcloud && rm -f ~/.local/bin/sspaghetty
 ```

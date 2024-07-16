@@ -260,7 +260,7 @@ check_ip() {
 			# If succesful update the last IP file
 			echo "$CURRENT_IP" >"$IP_FILE"
 		else
-			echo -e "${C_CHARTREUSE3}> ${F_UNDERLINED}IP REMAINS UNCHANGED${NO_FORMAT}"
+			echo -e "${C_DEEPSKYBLUE3}> IP REMAINS UNCHANGED${NO_FORMAT}"
 			echo -e "  ${C_CHARTREUSE3}CONTINUING WITHOUT UPDATING FIREWALL RULES"
 			echo
 			remove_cli_authorization "${1}"
@@ -295,6 +295,7 @@ request_ssh_pass() {
 }
 
 remove_cli_authorization() {
+  echo -e "${C_DEEPSKYBLUE3}> DELETING CONTEXT"
   if [ "$1" == "hcloud" ]; then
     echo -e "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
     hcloud context delete "Constellation" 2>/dev/null

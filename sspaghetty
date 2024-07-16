@@ -24,6 +24,15 @@ error_exit() {
   exit 1
 }
 
+verify_execution() {
+  if [ $? -ne 0 ]; then
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${2}${NO_FORMAT}"
+    error_exit
+  else
+    echo -e "  ${C_CHARTREUSE3}${1}${NO_FORMAT}"
+  fi
+}
+
 encode() {
   if [ "$3" == "hcloud" ]; then
     service_provider="HETZNER"
@@ -36,12 +45,8 @@ encode() {
     error_exit
   fi
   echo "> ENCODING $service_provider AUTHORIZATION TOKEN"
-  if ! sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$token_file" -pass pass:"$2" <<<"$1"; then
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}ENCODING FAILED${NO_FORMAT}"
-    error_exit
-  fi
-  echo -e "  ${C_CHARTREUSE3}ENCODING COMPLETE"
-  echo -e "${NO_FORMAT}"
+  sudo openssl enc -aes-256-cbc -salt -pbkdf2 -out "$token_file" -pass pass:"$2" <<<"$1"
+  verify_execution "ENCODING COMPLETE" "ENCODING FAILED"
 }
 
 decode() {
@@ -56,12 +61,8 @@ decode() {
 		error_exit
   fi
 	echo "> DECODING $service_provider AUTHORIZATION TOKEN"
-	if ! TOKEN=$(openssl enc -d -aes-256-cbc -in "$token_file" -salt -pbkdf2 -pass pass:"$1"); then
-		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}DECODING FAILED${NO_FORMAT}"
-		error_exit
-	fi
-	echo -e "  ${C_CHARTREUSE3}DECODING COMPLETE"
-	echo -e "${NO_FORMAT}"
+	TOKEN=$(openssl enc -d -aes-256-cbc -in "$token_file" -salt -pbkdf2 -pass pass:"$1")
+	verify_execution "DECODING COMPLETE" "DECODING FAILED"
 }
 
 hetzner_create_context() {
@@ -78,14 +79,7 @@ hetzner_create_context() {
     }
     expect eof
 EOF
-
-  # Check if the expect script was successful
-  if [ $? -ne 0 ]; then
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
-    error_exit
-  fi
-  # Unset the HCLOUD_TOKEN environment variable and color
-  echo -ne "${NO_FORMAT}"
+  verify_execution "TOKEN VERIFICATION COMPLETE" "TOKEN VERIFICATION FAILED"
   unset HCLOUD_TOKEN
 }
 
@@ -97,7 +91,7 @@ authenticate() {
     service_provider="DIGITAL OCEAN"
     token_file="$DO_TOKEN_FILE"
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A VALID COMMAND"
     error_exit
   fi
 
@@ -111,12 +105,10 @@ authenticate() {
       hetzner_create_context
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
-      if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
-        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
-        error_exit
-      fi
+      doctl auth init -t "$TOKEN" &>/dev/null
+      verify_execution "TOKEN VERIFICATION COMPLETE" "TOKEN VERIFICATION FAILED"
     else
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND"
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A VALID COMMAND"
       error_exit
     fi
 	else
@@ -130,12 +122,10 @@ authenticate() {
 		  hetzner_create_context
 		elif [ "$1" == "doctl" ]; then
       # shellcheck disable=SC2091
-      if ! $(doctl auth init -t "$TOKEN" &>/dev/null); then
-        echo -e "${C_INDIANRED1}> ${F_UNDERLINED}TOKEN VERIFICATION FAILED"
-        error_exit
-      fi
+      doctl auth init -t "$TOKEN" &>/dev/null
+      verify_execution "TOKEN VERIFICATION COMPLET" "TOKEN VERIFICATION FAILED"
     else
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A VALID COMMAND"
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A VALID COMMAND"
       error_exit
     fi
 	fi
@@ -144,21 +134,15 @@ authenticate() {
 
 whitelist() {
   if [ "$2" == "hcloud" ]; then
-    # FIREWALL_NAME="my-firewall-name"
-    if ! FIREWALL_NAME=$(hcloud firewall list -o columns=name | tail -n 1); then
-      # Will take the first name in the list, otherwise this would need configuration at installation
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL NAME REQUEST FAILED"
-      error_exit
-    fi
-    if ! FIREWALL_ID=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}'); then
-      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}FIREWALL DATA REQUEST FAILED"
-      error_exit
-    fi
-
+    # FIREWALL_NAME presume that you only have one active firewall on Hetzner"
+    FIREWALL_NAME=$(hcloud firewall list -o columns=name | tail -n 1)
+    verify_execution "FIREWALL NAME REQUEST COMPLETE" "FIREWALL NAME REQUEST FAILED"
+    FIREWALL_ID=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}')
+    verify_execution "FIREWALL ID REQUEST COMPLETE" "FIREWALL ID REQUEST FAILED"
     if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
       NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
     fi
-
+    # Get the current firewall id configuration:
     # hcloud firewall describe ${FIREWALL_ID} -o json | jq . > current_firewall.json
     json_data="[
       {
@@ -229,6 +213,7 @@ whitelist() {
     echo "${json_data}" > "${TMP_DIR}/hetzner_firewall_rules.json"
     echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
     hcloud firewall replace-rules "${FIREWALL_ID}" --rules-file "${TMP_DIR}/hetzner_firewall_rules.json" --quiet
+    unset FIREWALL_NAME FIREWALL_ID
     rm -f "${TMP_DIR}/hetzner_firewall_rules.json"
     remove_cli_authorization "$2"
   else
@@ -309,7 +294,7 @@ obtain_superuser_permissions() {
 request_ssh_pass() {
 	echo "> SSH IDENTITY PASSWORD:"
 	read -p "  " -s SSH_PASSWD
-	echo
+	echo -ne "                        "
 }
 
 remove_cli_authorization() {
@@ -349,7 +334,7 @@ install_cli() {
       error_exit
     fi
   else
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}${1}: NOT A COMMAND"
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}\"${1}\" IS NOT A COMMAND"
     error_exit
   fi
   # shellcheck disable=SC2091
@@ -470,6 +455,11 @@ escape_string() {
 }
 
 connect() {
+  if [[ ! -f ${NODE_SSH_ID} ]]; then
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH KEY \"${NODE_SSH_ID}\" NOT FOUND"
+    echo "Error: SSH key file ${NODE_SSH_ID} not found."
+    exit 1
+  fi
 	node_values
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
 	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"

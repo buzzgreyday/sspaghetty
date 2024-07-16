@@ -12,11 +12,11 @@ The script is in an early stage. Therefore, the script will most likely not beha
 
 ### 1a. Digital Ocean Server
 
-Setup your Digital Ocean project, deploy your server and setup the firewall rules.
+Setup your Digital Ocean project, deploy your server and setup the firewall rules. Create an API token with read and write permissions.
 
 ### 1b. Hetzner Server
 
-Setup your Hetzner project name (or rename) it `Constellation`, deploy your server and setup the firewall rules.
+Setup your Hetzner project name (or rename) it `Constellation`, deploy your server and setup the firewall rules. Create an API token with read and write permissions.
 
 ### 2. Download and Install
 ```

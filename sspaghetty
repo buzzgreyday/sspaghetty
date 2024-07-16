@@ -449,7 +449,7 @@ connect() {
 	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
 	expect << EOF
     set timeout 10
-    spawn ssh -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
+    spawn ssh -o "ServerAliveInterval 60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
     expect {
       "Enter passphrase" { send "${SSH_PASSWD}\r" }
       "Are you sure you want to continue connecting " { send "yes\r" }

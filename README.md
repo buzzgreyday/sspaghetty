@@ -1,4 +1,4 @@
-![Alt text](https://www.publicdomainpictures.net/pictures/70000/velka/cooked-fresh-spaghetti-1389122074pCK.jpg)
+![Cable Spaghetti](https://helios-i.mashable.com/imagery/articles/05Iodbvms58ia2wLGLaBa0C/hero-image.fill.size_1248x702.v1623387584.jpg)
 # Sspaghetty
 
 ## Requirements

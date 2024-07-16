@@ -462,12 +462,12 @@ EOF
 
 echo -ne "${C_DEEPSKYBLUE3}${F_BOLD}"
 cat <<EOF
-  #################################
-  #  SSPAGHETTY  NODE  CONNECTOR  #
-  #################################
-
+  #######################################
+  #    SSPAGHETTY   NODE   CONNECTOR    #
+  #######################################
+  Hetzner and Digital Ocean supported
   v0.6 by buzzgreyday (aka. hgtp_Michael)
-  -------------------------------------------
+  ---------------------------------------
 EOF
 
 # Example process to run (replace with your actual command)

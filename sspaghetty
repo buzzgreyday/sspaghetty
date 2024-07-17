@@ -292,7 +292,7 @@ check_network_connection() {
 
 obtain_superuser_permissions() {
 	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS"
-	echo -ne "  $(sudo ls /root &>/dev/null)"
+	echo -ne "  $(sudo ls /root &>/dev/null)${NO_FORMAT}"
 	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 }
 

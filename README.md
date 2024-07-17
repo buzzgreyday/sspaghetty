@@ -18,11 +18,11 @@ This script will automatically handle ssh connection to your Constellation Valid
 
 ### 1. Getting Started
 
-**Digital Ocean**
++ **Digital Ocean**
 
 Setup your Digital Ocean project, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 
-**Hetzner**
++ **Hetzner**
 
 Setup your Hetzner project __**name (or rename) the project `Constellation`**__, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 

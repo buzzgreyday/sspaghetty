@@ -1,22 +1,6 @@
 #!/bin/bash
 
-TMP_DIR="$HOME/.tmp"
-IP_FILE="$HOME/.tmp/last_ip.txt"
-DOWNLOAD_LOC="$HOME"
-INSTALL_LOC="/usr/local/bin"
-NODE_SCRIPT_HOME="$HOME/.node"
-DO_TOKEN_FILE="$NODE_SCRIPT_HOME/do_auth_token.enc"
-HCLOUD_TOKEN_FILE="$NODE_SCRIPT_HOME/hcloud_auth_token.enc"
-
-NO_FORMAT="\033[0m"
-F_BOLD="\033[1m"
-F_UNDERLINED="\033[4m"
-C_INDIANRED1="\033[38;5;203m"
-C_DEEPSKYBLUE3="\033[38;5;32m"
-C_YELLOW1="\033[38;5;226m"
-C_CHARTREUSE3="\033[38;5;76m"
-C_GREY_CENSOR1="\033[38;5;234m"
-C_GREY_CENSOR2="\033[48;5;233m"
+source "${HOME}/.sspaghetty/config.sh"
 
 error_exit() {
   echo -e "  ${C_INDIANRED1}EXITING..."
@@ -104,7 +88,6 @@ authenticate() {
     if [ "$1" == "hcloud" ]; then
       hetzner_create_context
 		elif [ "$1" == "doctl" ]; then
-      # shellcheck disable=SC2091
       doctl auth init -t "$TOKEN" &>/dev/null
       verify_execution "TOKEN VERIFICATION COMPLETE" "TOKEN VERIFICATION FAILED"
     else
@@ -121,7 +104,6 @@ authenticate() {
 		if [ "$1" == "hcloud" ]; then
 		  hetzner_create_context
 		elif [ "$1" == "doctl" ]; then
-      # shellcheck disable=SC2091
       doctl auth init -t "$TOKEN" &>/dev/null
       verify_execution "TOKEN VERIFICATION COMPLETE" "TOKEN VERIFICATION FAILED"
     else
@@ -139,9 +121,11 @@ whitelist() {
     verify_execution "FIREWALL NAME REQUEST COMPLETE" "FIREWALL NAME REQUEST FAILED"
     FIREWALL_ID=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}')
     verify_execution "FIREWALL ID REQUEST COMPLETE" "FIREWALL ID REQUEST FAILED"
-    if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
-      NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
+    if [ ! -z $NODE_SSH_PORT ]; then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO SSH PORT VALUE FOUND"
+      error_exit
     fi
+    node_values
     # Get the current firewall id configuration:
     # hcloud firewall describe ${FIREWALL_ID} -o json | jq . > current_firewall.json
     json_data="[
@@ -216,7 +200,6 @@ whitelist() {
     verify_execution "FIREWALL UPDATE COMPLETE" "FIREWALL UPDATE FAILED"
     unset FIREWALL_NAME FIREWALL_ID
     rm -f "${TMP_DIR}/hetzner_firewall_rules.json"
-    remove_cli_authorization "$2"
   else
     # Update firewall with CURRENT_IP using doctl
     if ! FIREWALL_DATA=$(doctl compute firewall list); then
@@ -225,8 +208,9 @@ whitelist() {
     fi
     FIREWALL_NAME=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $2}')
     FIREWALL_ID=$(echo "$FIREWALL_DATA" | awk 'NR==2{print $1}')
-    if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
-      NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
+    if [ ! -z $NODE_SSH_PORT ]; then
+      echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO SSH PORT VALUE FOUND"
+      error_exit
     fi
     doctl compute firewall update "$FIREWALL_ID" --name "$FIREWALL_NAME" --inbound-rules "protocol:tcp,ports:${NODE_SSH_PORT},address:${1}/32 protocol:tcp,ports:9000-9001,address:0.0.0.0/0 protocol:tcp,ports:9010-9011,address:0.0.0.0/0" --outbound-rules "protocol:tcp,ports:all,address:0.0.0.0/0 protocol:udp,ports:all,address:0.0.0.0/0 protocol:icmp,address:0.0.0.0/0" > /dev/null 2>&1
     verify_execution "FIREWALL UPDATE COMPLET" "FIREWALL UPDATE FAILED"
@@ -281,9 +265,10 @@ check_network_connection() {
 }
 
 obtain_superuser_permissions() {
-	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS${NO_FORMAT}"
-	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
+	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS"
+	echo -ne "  "
 	sudo ls /root &>/dev/null
+	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 }
 
 request_ssh_pass() {
@@ -310,8 +295,8 @@ remove_cli_authorization() {
 }
 
 install_cli() {
-	if [ ! -d "$NODE_SCRIPT_HOME" ]; then
-		sudo mkdir -p "$NODE_SCRIPT_HOME"
+	if [ ! -f "${HOME}/.sspaghetty/config.sh" ]; then
+		echo "config file should be printed to file here"
 	fi
 	if [ "$1" == "hcloud" ]; then
 	  service_provider="HETZNER"
@@ -367,54 +352,36 @@ uninstall() {
 	remove_cli_authorization "${1}"
 	obtain_superuser_permissions
 	sudo rm -f "$INSTALL_LOC/${1}"
-	sudo rm -rf "$NODE_SCRIPT_HOME"
+	sudo rm -rf "${HOME}/.sspaghetty/config.sh"
 	sudo apt remove expect
-	echo -e "${C_DEEPSKYBLUE3}> ${F_UNDERLINED}UNINSTALL COMPLETE${NO_FORMAT}"
+	echo -e "${C_CHARTREUSE3}> ${F_UNDERLINED}UNINSTALL COMPLETE${NO_FORMAT}"
 	echo
 	exit 0
 }
 
 node_values() {
-	if [ -f "$NODE_SCRIPT_HOME/node_ip.txt" ]; then
-		NODE_IP=$(cat "$NODE_SCRIPT_HOME/node_ip.txt")
-	fi
-	if [ -f "$NODE_SCRIPT_HOME/node_ssh_port.txt" ]; then
-		NODE_SSH_PORT=$(cat "$NODE_SCRIPT_HOME/node_ssh_port.txt")
-	fi
-	if [ -f "$NODE_SCRIPT_HOME/node_ssh_id.txt" ]; then
-		NODE_SSH_ID=$(cat "$NODE_SCRIPT_HOME/node_ssh_id.txt")
-	fi
-	if [ -f "$NODE_SCRIPT_HOME/node_user.txt" ]; then
-		DROPLET_USER=$(cat "$NODE_SCRIPT_HOME/node_user.txt")
-	fi
-	if [ ! -n "$NODE_IP" ]; then
-		obtain_superuser_permissions
-		echo "> NO NODE IP SET"
-		read -p "  NODE IP: " NODE_IP
-		echo
-		echo "$NODE_IP" | sudo tee "$NODE_SCRIPT_HOME/node_ip.txt" &>/dev/null
-	fi
-	if [ ! -n "$NODE_SSH_PORT" ]; then
-		obtain_superuser_permissions
-		echo "> NO NODE SSH PORT SET"
-		read -p "  NODE SSH PORT: " NODE_SSH_PORT
-		echo
-		echo "$NODE_SSH_PORT" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_port.txt" &>/dev/null
-	fi
-	if [ ! -n "$NODE_SSH_ID" ]; then
-		obtain_superuser_permissions
-		echo "> NO NODE SSH IDENTITY FILE PATH SET"
-		read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. $HOME/.ssh/id_rsa]: " NODE_SSH_ID
-		echo
-		echo "$NODE_SSH_ID" | sudo tee "$NODE_SCRIPT_HOME/node_ssh_id.txt" &>/dev/null
-	fi
-	if [ ! -n "$DROPLET_USER" ]; then
-		obtain_superuser_permissions
-		echo "> NO NODE USERNAME SET"
-		read -p "  NODE USERNAME [nodeadmin]: " DROPLET_USER
-		echo
-		echo "$DROPLET_USER" | sudo tee "$NODE_SCRIPT_HOME/node_user.txt" &>/dev/null
-	fi
+    obtain_superuser_permissions
+
+    if [ ! -n "$NODE_IP" ]; then
+        echo "> NO NODE IP SET"
+        read -p "  NODE IP: " NODE_IP
+        echo "NODE_IP=\"$NODE_IP\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+    fi
+    if [ ! -n "$NODE_SSH_PORT" ]; then
+        echo "> NO NODE SSH PORT SET"
+        read -p "  NODE SSH PORT: " NODE_SSH_PORT
+        echo "NODE_SSH_PORT=\"$NODE_SSH_PORT\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+    fi
+    if [ ! -n "$NODE_SSH_ID" ]; then
+        echo "> NO NODE SSH IDENTITY FILE PATH SET"
+        read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. $HOME/.ssh/id_rsa]: " NODE_SSH_ID
+        echo "NODE_SSH_ID=\"$NODE_SSH_ID\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+    fi
+    if [ ! -n "$DROPLET_USER" ]; then
+        echo "> NO NODE USERNAME SET"
+        read -p "  NODE USERNAME [nodeadmin]: " DROPLET_USER
+        echo "DROPLET_USER=\"$DROPLET_USER\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+    fi
 }
 
 # Function to escape special characters in a string
@@ -440,6 +407,7 @@ escape_string() {
 
 connect() {
 	node_values
+
 	if [[ ! -f ${NODE_SSH_ID} ]]; then
     echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH KEY \"${NODE_SSH_ID}\" NOT FOUND"
     exit 1

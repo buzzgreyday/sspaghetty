@@ -3,9 +3,9 @@
 
 > ![IMPORTANT]
 > This script currently has limited functionality.
-> * Only support for Ubuntu
-> * Only support for maximum one project, server and firewall
-> * Only support for either Digital Ocean *or* Hetzner
+> Only support for Ubuntu
+> Only support for maximum one project, server and firewall
+> Only support for either Digital Ocean *or* Hetzner
 
 This is an early stage script. Please read the sections below.
 

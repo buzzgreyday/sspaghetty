@@ -9,7 +9,7 @@
 
 This is an early stage script. Please read the sections below.
 
-This script will automatically handle ssh connection to your Constellation Validator Node if the client IP changes (dynamic IP, travel, work, etc.) If the client IP changes, the script will automatically update the Digital Ocean or Hetzner firewall rules and establish connection. This is very useful if you're using an Ubuntu PC/Mac to handle node operations. Support for more operative systems might follow (depending on interest). 
+This script will automatically handle ssh connection to your Constellation Validator Node if the client IP changes (dynamic IP, travel, work, etc.) If the client IP changes, the script will automatically update the Digital Ocean or Hetzner firewall rules and establish connection.
 
 ## Requirements
 

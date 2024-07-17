@@ -33,11 +33,11 @@ This step only has to be done once.
 ```
 wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty && chmod +x sspaghetty && mkdir -p ~/.local/bin && mv sspaghetty ~/.local/bin
 ```
-**Install for Digital Ocean**
++ **Digital Ocean**
 ```
 sspaghetty install doctl
 ```
-**Install for Hetzner**
++ **Hetzner**
 ```
 sspaghetty install hcloud
 ```
@@ -45,20 +45,20 @@ sspaghetty install hcloud
 
 This step is used to connect to the Validator Node and is repeated any time you wish to connect to your Validator Node.
 
-**Connect to Digital Ocean**
++ **Digital Ocean**
 ```
 sspaghetty connect doctl
 ```
-**Connect to Hetzner**
++ **Hetzner**
 ```
 sspaghetty connect hcloud
 ```
 ### Uninstall
-**Uninstall for Digital Ocean**
++ **Digital Ocean**
 ```
 sspaghetty uninstall doctl && rm -f ~/.local/bin/sspaghetty
 ```
-**Uninstall for Hetzner**
++ **Hetzner**
 ```
 sspaghetty uninstall hcloud && rm -f ~/.local/bin/sspaghetty
 ```

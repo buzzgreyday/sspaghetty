@@ -1,6 +1,32 @@
 #!/bin/bash
 
-source "${HOME}/.sspaghetty/config.sh"
+# Directory paths
+TMP_DIR="$HOME/.tmp"
+IP_FILE="$TMP_DIR/last_ip.txt"
+DOWNLOAD_LOC="$HOME"
+INSTALL_LOC="/usr/local/bin"
+NODE_SCRIPT_HOME="$HOME/.sspaghetty"
+CONFIG_FILE="$NODE_SCRIPT_HOME/config.sh"
+
+# Encrypted token file paths
+DO_TOKEN_FILE="$NODE_SCRIPT_HOME/do_auth_token.enc"
+HCLOUD_TOKEN_FILE="$NODE_SCRIPT_HOME/hcloud_auth_token.enc"
+
+# Color and formatting constants
+NO_FORMAT="\033[0m"
+F_BOLD="\033[1m"
+F_UNDERLINED="\033[4m"
+C_INDIANRED1="\033[38;5;203m"
+C_DEEPSKYBLUE3="\033[38;5;32m"
+C_YELLOW1="\033[38;5;226m"
+C_CHARTREUSE3="\033[38;5;76m"
+C_GREY_CENSOR1="\033[38;5;234m"
+C_GREY_CENSOR2="\033[48;5;233m"
+
+# Overwrite default values with user configuration
+if [ -f "$CONFIG_FILE" ]; then
+  source "$CONFIG_FILE"
+fi
 
 error_exit() {
   echo -e "  ${C_INDIANRED1}EXITING..."
@@ -121,7 +147,7 @@ whitelist() {
     verify_execution "FIREWALL NAME REQUEST COMPLETE" "FIREWALL NAME REQUEST FAILED"
     FIREWALL_ID=$(hcloud firewall list | grep "$FIREWALL_NAME" | awk '{print $1}')
     verify_execution "FIREWALL ID REQUEST COMPLETE" "FIREWALL ID REQUEST FAILED"
-    if [ ! -z $NODE_SSH_PORT ]; then
+    if [ ! -n "$NODE_SSH_PORT" ]; then
       echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO SSH PORT VALUE FOUND"
       error_exit
     fi
@@ -239,19 +265,19 @@ check_ip() {
 		echo -e "${C_DEEPSKYBLUE3}> ANALYSING IP${NO_FORMAT}"
 		if [ "$CURRENT_IP" != "$LAST_IP" ]; then
 			echo -e "  ${C_YELLOW1}IP HAS CHANGED${NO_FORMAT}"
-			echo -e "  ${C_YELLOW1}PLEASE WAIT, UPDATING FIREWALL RULES${NO_FORMAT}"
+			echo -e "${C_YELLOW1}> UPDATING FIREWALL RULES${NO_FORMAT}"
 			whitelist "$CURRENT_IP" "${1}"
 			# If succesful update the last IP file
 			echo "$CURRENT_IP" >"$IP_FILE"
 		else
-			echo -e "  ${C_CHARTREUSE3}IP REMAINS UNCHANGED${NO_FORMAT}"
+			echo -e "${C_DEEPSKYBLUE3}>  IP REMAINS UNCHANGED${NO_FORMAT}"
 			echo -e "  ${C_CHARTREUSE3}CONTINUING WITHOUT UPDATING FIREWALL RULES${NO_FORMAT}"
 			remove_cli_authorization "${1}"
 		fi
 	else
-		echo -e "  ${C_DEEPSKYBLUE3}NO REGISTERED IP EXISTS, SAVING CURRENT IP${NO_FORMAT}"
+		echo -e "  ${C_YELLOW1}NO REGISTERED IP EXISTS, SAVING CURRENT IP${NO_FORMAT}"
 		echo "$CURRENT_IP" >"$IP_FILE"
-		echo -e "  ${C_YELLOW1}PLEASE WAIT, UPDATING FIREWALL RULES${NO_FORMAT}"
+		echo -e "  ${C_YELLOW1}UPDATING FIREWALL RULES${NO_FORMAT}"
 		whitelist "$CURRENT_IP" "${1}"
 	fi
 }
@@ -266,8 +292,7 @@ check_network_connection() {
 
 obtain_superuser_permissions() {
 	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS"
-	echo -ne "  "
-	sudo ls /root &>/dev/null
+	echo -ne "  $(sudo ls /root &>/dev/null)"
 	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 }
 
@@ -295,14 +320,43 @@ remove_cli_authorization() {
 }
 
 install_cli() {
-	if [ ! -f "${HOME}/.sspaghetty/config.sh" ]; then
-		echo "config file should be printed to file here"
+  obtain_superuser_permissions
+	if [ ! -f "$CONFIG_FILE" ]; then
+	  sudo mkdir -p "${HOME}/.sspaghetty"
+	  # Create and populate config.sh
+    if [ ! -f "$CONFIG_FILE" ]; then
+      echo -e "${C_DEEPSKYBLUE3}> CREATING CONFIGURATION FILE"
+      sudo tee "$CONFIG_FILE" > /dev/null <<EOF
+# Directory paths
+TMP_DIR="$TMP_DIR"
+IP_FILE="$IP_FILE"
+DOWNLOAD_LOC="$DOWNLOAD_LOC"
+INSTALL_LOC="INSTALL_LOC"
+NODE_SCRIPT_HOME="NODE_SCRIPT_HOME"
+
+# Encrypted token file paths
+DO_TOKEN_FILE="$DO_TOKEN_FILE"
+HCLOUD_TOKEN_FILE="$HCLOUD_TOKEN_FILE"
+
+# Color and formatting constants
+NO_FORMAT="NO_FORMAT"
+F_BOLD="F_BOLD"
+F_UNDERLINED="F_UNDERLINED"
+C_INDIANRED1="C_INDIANRED1"
+C_DEEPSKYBLUE3="C_DEEPSKYBLUE3"
+C_YELLOW1="C_YELLOW1"
+C_CHARTREUSE3="C_CHARTREUSE3"
+C_GREY_CENSOR1="C_GREY_CENSOR1"
+C_GREY_CENSOR2="C_GREY_CENSOR2"
+
+# Dynamically added values
+EOF
+    fi
 	fi
 	if [ "$1" == "hcloud" ]; then
 	  service_provider="HETZNER"
 	  echo -e "${C_DEEPSKYBLUE3}> DOWNLOADING ${service_provider} CLI"
 	  LATEST_CLI_VERSION="$(curl -s https://api.github.com/repos/hetznercloud/cli/releases/latest | grep browser_download_url | cut -d '"' -f 4 | grep "linux-amd64.tar.gz")"
-
 	elif [ "$1" == "doctl" ]; then
 	  service_provider="DIGITAL OCEAN"
     echo -e "${C_DEEPSKYBLUE3}> DOWNLOADING ${service_provider} CLI"
@@ -352,7 +406,7 @@ uninstall() {
 	remove_cli_authorization "${1}"
 	obtain_superuser_permissions
 	sudo rm -f "$INSTALL_LOC/${1}"
-	sudo rm -rf "${HOME}/.sspaghetty/config.sh"
+	sudo rm -rf "$CONFIG_FILE"
 	sudo apt remove expect
 	echo -e "${C_CHARTREUSE3}> ${F_UNDERLINED}UNINSTALL COMPLETE${NO_FORMAT}"
 	echo
@@ -365,22 +419,22 @@ node_values() {
     if [ ! -n "$NODE_IP" ]; then
         echo "> NO NODE IP SET"
         read -p "  NODE IP: " NODE_IP
-        echo "NODE_IP=\"$NODE_IP\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+        echo "NODE_IP=\"$NODE_IP\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
     fi
     if [ ! -n "$NODE_SSH_PORT" ]; then
         echo "> NO NODE SSH PORT SET"
         read -p "  NODE SSH PORT: " NODE_SSH_PORT
-        echo "NODE_SSH_PORT=\"$NODE_SSH_PORT\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+        echo "NODE_SSH_PORT=\"$NODE_SSH_PORT\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
     fi
     if [ ! -n "$NODE_SSH_ID" ]; then
         echo "> NO NODE SSH IDENTITY FILE PATH SET"
         read -p "  FULL PATH TO SSH IDENTITY FILE [e.g. $HOME/.ssh/id_rsa]: " NODE_SSH_ID
-        echo "NODE_SSH_ID=\"$NODE_SSH_ID\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+        echo "NODE_SSH_ID=\"$NODE_SSH_ID\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
     fi
     if [ ! -n "$DROPLET_USER" ]; then
         echo "> NO NODE USERNAME SET"
         read -p "  NODE USERNAME [nodeadmin]: " DROPLET_USER
-        echo "DROPLET_USER=\"$DROPLET_USER\"" | sudo tee -a "${HOME}/.sspaghetty/config.sh" > /dev/null
+        echo "DROPLET_USER=\"$DROPLET_USER\"" | sudo tee -a "$CONFIG_FILE" > /dev/null
     fi
 }
 

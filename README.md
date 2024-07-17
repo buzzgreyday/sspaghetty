@@ -16,10 +16,6 @@ This script will automatically handle ssh connection to your Constellation Valid
 * __**Ubuntu PC/Mac**__
 * __**Max one Digital Ocean or Hetzner server**__
 
-### Getting started
-
-The script is in an early stage. Therefore, __**the script will most likely not behave as expected if you have multiple projects, servers and/or firewalls on Digital Ocean and/or Hetzner.**__ Support for multiple projects, server and/or firewalls will likely follow in the future.
-
 **Digital Ocean**
 
 Setup your Digital Ocean project, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__

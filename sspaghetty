@@ -489,7 +489,7 @@ EOF
 
 echo -e "${F_BOLD}"
 cat <<EOF
-  SSPAGHETTY v0.6
+  SSPAGHETTY v0.7
   by Buzz Greyday (aka. hgtp_Michael)
   -------------------------------------------
 EOF

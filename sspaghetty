@@ -292,14 +292,20 @@ check_network_connection() {
 
 obtain_superuser_permissions() {
 	echo -e "${C_YELLOW1}> OBTAIN SUPERUSER PERMISSIONS"
-	echo -ne "  $(sudo ls /root &>/dev/null)${NO_FORMAT}"
-	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
+	# Prompt for sudo password and execute a command to trigger the prompt
+	echo -ne "  "
+  sudo_prompt=$(sudo -v; echo $?)
+
+  # Move the cursor back and print the "CENSORED" message after the sudo password is entered
+  if [ "$sudo_prompt" -eq 0 ]; then
+    echo -ne "\r${NO_FORMAT}  ${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
+  fi
 }
 
 request_ssh_pass() {
 	echo -e "${C_DEEPSKYBLUE3}> ${F_UNDERLINED}SSH IDENTITY PASSWORD:${NO_FORMAT}"
 	read -p "  " -s SSH_PASSWD
-	echo -ne "${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
+	echo -ne "${NO_FORMAT}  ${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 }
 
 remove_cli_authorization() {

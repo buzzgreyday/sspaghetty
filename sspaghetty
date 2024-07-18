@@ -470,21 +470,20 @@ connect() {
   expect {
     "Enter passphrase for key" {
       send "${SSH_PASSWD}\r"
-      exp_continue
+      interact
     }
     "Are you sure you want to continue connecting" {
       send "yes\r"
-      exp_continue
+      interact
     }
     "assword:" {
       send "${SSH_PASSWD}\r"
-      exp_continue
+      interact
     }
     timeout {
       exit 1
     }
   }
-  interact
 EOF
 
 }

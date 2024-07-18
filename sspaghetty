@@ -454,7 +454,7 @@ escape_string() {
 
   echo "$escaped"
 }
-if [ "$SSPAGHETTY_FIRST_RUN" -eq 1 ]; then
+if [ $SSPAGHETTY_FIRST_RUN -eq 1 ]; then
   expect -c "spawn ssh -o \"ServerAliveInterval=60\" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}; \
     expect \"Are you sure you want to continue connecting\"; \
     send \"yes\r\"; \

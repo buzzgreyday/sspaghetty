@@ -482,7 +482,7 @@ fi
 
 echo -e "${F_BOLD}"
 cat <<EOF
-  SSPAGHETTY v0.7.3
+  SSPAGHETTY v0.7.4
   by Buzz Greyday (aka. hgtp_Michael)
   -------------------------------------------
 EOF
@@ -510,7 +510,6 @@ case "${1}" in
 		check_ip "${2}"
 		connect
 		unset SSH_PASSWD
-		remove_cli_authorization "${2}"
 	else
 		echo -e "${C_INDIANRED1}> ${F_UNDERLINED}NO INTERNET CONNECTION"
 		error_exit

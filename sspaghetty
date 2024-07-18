@@ -464,18 +464,19 @@ connect() {
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
 	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
 	expect <<EOF
+	log_user 1
   set timeout 10
   spawn ssh -o \"ServerAliveInterval 60\" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
   expect {
-    "Enter passphrase for key" {
+    -re "Enter passphrase for key .*:" {
       send "${SSH_PASSWD}\r"
-      exp_continue
+      interact
     }
-    "Are you sure you want to continue connecting" {
+    -re "Are you sure you want to continue connecting" {
       send "yes\r"
-      exp_continue
+      interact
     }
-    "assword:" {
+    -re "assword:" {
       send "${SSH_PASSWD}\r"
       exp_continue
     }
@@ -483,14 +484,13 @@ connect() {
       exit 1
     }
   }
-  interact
 EOF
 
 }
 
 echo -e "${F_BOLD}"
 cat <<EOF
-  SSPAGHETTY v0.7.2
+  SSPAGHETTY v0.7.3
   by Buzz Greyday (aka. hgtp_Michael)
   -------------------------------------------
 EOF

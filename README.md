@@ -41,7 +41,7 @@ sspaghetty install doctl
 ```
 sspaghetty install hcloud
 ```
-### 3. Connect to server
+### 3. Connect to Server
 
 This step is used to connect to the Validator Node and is repeated any time you wish to connect to your Validator Node.
 

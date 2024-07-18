@@ -465,25 +465,24 @@ connect() {
 	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
 	expect <<EOF
 	log_user 1
-  set timeout 10
+  set timeout -1
   spawn ssh -o "ServerAliveInterval=60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
   expect {
-    "Enter passphrase for key '${NODE_SSH_ID}': " {
-      send "${SSH_PASSWD}\r"
-      interact
+    -re "Enter passphrase for key .*: " {
+      send -- "${SSH_PASSWD}\r"
+      sleep 3
+      exp_continue
     }
     "Are you sure you want to continue connecting" {
       send "yes\r"
-      interact
+      exp_continue
     }
     "assword:" {
       send "${SSH_PASSWD}\r"
-      interact
-    }
-    timeout {
-      exit 1
+      exp_continue
     }
   }
+  interact
   expect eof
 EOF
 

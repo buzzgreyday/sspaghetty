@@ -344,17 +344,6 @@ NODE_SCRIPT_HOME="NODE_SCRIPT_HOME"
 DO_TOKEN_FILE="$DO_TOKEN_FILE"
 HCLOUD_TOKEN_FILE="$HCLOUD_TOKEN_FILE"
 
-# Color and formatting constants
-NO_FORMAT="NO_FORMAT"
-F_BOLD="F_BOLD"
-F_UNDERLINED="F_UNDERLINED"
-C_INDIANRED1="C_INDIANRED1"
-C_DEEPSKYBLUE3="C_DEEPSKYBLUE3"
-C_YELLOW1="C_YELLOW1"
-C_CHARTREUSE3="C_CHARTREUSE3"
-C_GREY_CENSOR1="C_GREY_CENSOR1"
-C_GREY_CENSOR2="C_GREY_CENSOR2"
-
 # Dynamically added values
 EOF
     fi
@@ -475,12 +464,10 @@ connect() {
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
 	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
 	expect << EOF
-    set timeout 10
-    spawn ssh -o "ServerAliveInterval 60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
+    spawn ssh -o  "ServerAliveInterval 60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
     expect {
       "Enter passphrase" { send "${SSH_PASSWD}\r" }
       "Are you sure you want to continue connecting " { send "yes\r" }
-      timeout { exit 1 }
     }
     expect eof
 EOF
@@ -489,7 +476,7 @@ EOF
 
 echo -e "${F_BOLD}"
 cat <<EOF
-  SSPAGHETTY v0.7
+  SSPAGHETTY v0.7.1
   by Buzz Greyday (aka. hgtp_Michael)
   -------------------------------------------
 EOF

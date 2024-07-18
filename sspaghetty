@@ -463,20 +463,27 @@ connect() {
   fi
 	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
 	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
-	expect << EOF
-    spawn ssh -o  "ServerAliveInterval 60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
-    expect {
-      set timeout 10
-      "Enter passphrase" { send "${SSH_PASSWD}\r"
-                           interact
-                         }
-      "Are you sure you want to continue connecting " { send "yes\r"
-                                                        send "${SSH_PASSWD}\r"
-                                                        interact
-                                                      }
-      timeout { exit 1 }
+	expect <<EOF
+  set timeout -1
+  spawn ssh -o "ServerAliveInterval 60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
+  expect {
+    "Enter passphrase" {
+      send "${SSH_PASSWD}\r"
+      exp_continue
     }
-    expect eof
+    "Are you sure you want to continue connecting" {
+      send "yes\r"
+      exp_continue
+    }
+    "assword:" {
+      send "${SSH_PASSWD}\r"
+      exp_continue
+    }
+    timeout {
+      exit 1
+    }
+  }
+  interact
 EOF
 
 }

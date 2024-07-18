@@ -28,7 +28,7 @@ Setup your Hetzner project __**name (or rename) the project `Constellation`**__,
 
 ### 2. Download and Install
 
-This step only has to be done once. Make sure you have `PATH="$PATH:~./local/bin" among your Ubuntu paths.
+This step only has to be done once. Make sure you have `PATH="$PATH:~./local/bin"` among your Ubuntu paths.
 
 ```
 mkdir -p ~/.local/bin && wget https://raw.githubusercontent.com/buzzgreyday/sspaghetty/main/sspaghetty -P ~/.local/bin && chmod 700 ~/.local/bin

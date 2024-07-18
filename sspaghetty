@@ -454,23 +454,13 @@ escape_string() {
   echo "$escaped"
 }
 
-connect() {
-	node_values
-
-	if [[ ! -f ${NODE_SSH_ID} ]]; then
-    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH KEY \"${NODE_SSH_ID}\" NOT FOUND"
-    exit 1
-  fi
-	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
-	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
-	expect <<EOF
-	log_user 1
+expect <<EOF
+  log_user 1
   set timeout -1
   spawn ssh -o "ServerAliveInterval=60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
   expect {
     -re "Enter passphrase for key .*: " {
       send -- "${SSH_PASSWD}\r"
-      sleep 3
       exp_continue
     }
     "Are you sure you want to continue connecting" {
@@ -481,11 +471,12 @@ connect() {
       send "${SSH_PASSWD}\r"
       exp_continue
     }
+    eof {
+      exit
+    }
   }
   interact
-  expect eof
 EOF
-
 }
 
 echo -e "${F_BOLD}"

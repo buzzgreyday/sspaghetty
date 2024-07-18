@@ -380,7 +380,7 @@ EOF
   unset SSH_PASSWD
   node_values "${1}"
   remove_cli_authorization "${1}"
-  export SSPAGHETTY_FIRST_RUN=1
+  export SSPAGHETTY_FIRST_RUN="True"
   echo -e "${C_CHARTREUSE3}> INSTALLATION COMPLETE${NO_FORMAT}"
   echo
 }
@@ -454,7 +454,7 @@ escape_string() {
 
   echo "$escaped"
 }
-if [ $SSPAGHETTY_FIRST_RUN -eq 1 ]; then
+if [ -n "$SSPAGHETTY_FIRST_RUN" ]; then
   expect -c "spawn ssh -o \"ServerAliveInterval=60\" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}; \
     expect \"Are you sure you want to continue connecting\"; \
     send \"yes\r\"; \

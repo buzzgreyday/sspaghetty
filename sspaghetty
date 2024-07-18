@@ -464,11 +464,11 @@ expect <<EOF
       exp_continue
     }
     "Are you sure you want to continue connecting" {
-      send "yes\r"
+      send -- "yes\r"
       exp_continue
     }
     "assword:" {
-      send "${SSH_PASSWD}\r"
+      send -- "${SSH_PASSWD}\r"
       exp_continue
     }
     eof {

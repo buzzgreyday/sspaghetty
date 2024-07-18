@@ -466,8 +466,15 @@ connect() {
 	expect << EOF
     spawn ssh -o  "ServerAliveInterval 60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
     expect {
-      "Enter passphrase" { send "${SSH_PASSWD}\r" }
-      "Are you sure you want to continue connecting " { send "yes\r" }
+      set timeout 10
+      "Enter passphrase" { send "${SSH_PASSWD}\r"
+                           interact
+                         }
+      "Are you sure you want to continue connecting " { send "yes\r"
+                                                        send "${SSH_PASSWD}\r"
+                                                        interact
+                                                      }
+      timeout { exit 1 }
     }
     expect eof
 EOF
@@ -476,7 +483,7 @@ EOF
 
 echo -e "${F_BOLD}"
 cat <<EOF
-  SSPAGHETTY v0.7.1
+  SSPAGHETTY v0.7.2
   by Buzz Greyday (aka. hgtp_Michael)
   -------------------------------------------
 EOF

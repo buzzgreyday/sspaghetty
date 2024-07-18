@@ -454,7 +454,17 @@ escape_string() {
 
   echo "$escaped"
 }
-if [ -n "$SSPAGHETTY_FIRST_RUN" ]; then
+
+connect() {
+	node_values
+
+	if [[ ! -f ${NODE_SSH_ID} ]]; then
+    echo -e "${C_INDIANRED1}> ${F_UNDERLINED}SSH KEY \"${NODE_SSH_ID}\" NOT FOUND"
+    exit 1
+  fi
+	SSH_PASSWD=$(escape_string "$SSH_PASSWD")
+	echo -ne "${C_GREY_CENSOR1}${C_GREY_CENSOR2}"
+	if [ -n "$SSPAGHETTY_FIRST_RUN" ]; then
   expect -c "spawn ssh -o \"ServerAliveInterval=60\" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}; \
     expect \"Are you sure you want to continue connecting\"; \
     send \"yes\r\"; \
@@ -467,6 +477,9 @@ else
     send \"${SSH_PASSWD}\r\"; \
     interact"
 fi
+
+}
+
 echo -e "${F_BOLD}"
 cat <<EOF
   SSPAGHETTY v0.7.3

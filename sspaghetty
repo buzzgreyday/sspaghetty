@@ -305,7 +305,7 @@ obtain_superuser_permissions() {
 request_ssh_pass() {
 	echo -e "${C_DEEPSKYBLUE3}> ${F_UNDERLINED}SSH IDENTITY PASSWORD:${NO_FORMAT}"
 	read -p "  " -s SSH_PASSWD
-	echo -ne "${NO_FORMAT}  ${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
+	echo -ne "${NO_FORMAT}${C_GREY_CENSOR2}  CENSORED  CENSORED  CENSORED  ${NO_FORMAT}\n"
 }
 
 remove_cli_authorization() {

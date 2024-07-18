@@ -466,7 +466,7 @@ connect() {
 	expect <<EOF
 	log_user 1
   set timeout 10
-  spawn ssh -o "ServerAliveInterval=60" -i "${NODE_SSH_ID}" ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
+  spawn ssh -o "ServerAliveInterval=60" -i ${NODE_SSH_ID} ${DROPLET_USER}@${NODE_IP} -p ${NODE_SSH_PORT}
   expect {
     "Enter passphrase for key" {
       send "${SSH_PASSWD}\r"

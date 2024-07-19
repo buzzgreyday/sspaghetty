@@ -30,7 +30,11 @@ Setup your Hetzner project __**name (or rename) the project `Constellation`**__,
 ### 2. Download and Install
 
 > [!IMPORTANT]
-> If your on Windows 10 or above, you can use WSL (Windows Subsystem for Linux). Here's how
+> If your on Windows 10 or above, you can use WSL (Windows Subsystem for Linux). Here's how:
+> 1. Open a new PowerShell: `ctrl+x`
+> 2. In PowerShell input: `wsl --install`
+> 3. Restart your PC
+> 4. Open PowerShell and input: `wsl`
 
 This step only has to be done once. Make sure you have `PATH="$PATH:~./local/bin"` among your Ubuntu paths.
 

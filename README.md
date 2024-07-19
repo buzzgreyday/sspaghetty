@@ -4,8 +4,7 @@
 > [!IMPORTANT]
 > This script currently has limited functionality. 
 > * Only support for Ubuntu.
->   Windows users can use WSL:
->   https://woshub.com/install-wsl-windows-subsystem-linux/
+>   Windows users can use WSL (how to below)
 > * Only support for maximum one project, server and firewall.
 > * Only support for either Digital Ocean *or* Hetzner
 
@@ -15,7 +14,7 @@ This script will automatically handle ssh connection to your Constellation Valid
 
 ### Requirements
 
-* __**Ubuntu PC/Mac**__
+* __**Ubuntu PC/Mac or WSL**__
 * __**Digital Ocean or Hetzner server**__
 
 ### 1. Getting Started
@@ -29,6 +28,9 @@ Setup your Digital Ocean project, deploy your server and __**setup the firewall 
 Setup your Hetzner project __**name (or rename) the project `Constellation`**__, deploy your server and __**setup the firewall rules. Create an API token with read and write permissions.**__
 
 ### 2. Download and Install
+
+> [!IMPORTANT]
+> If your on Windows 10 or above, you can use WSL (Windows Subsystem for Linux). Here's how
 
 This step only has to be done once. Make sure you have `PATH="$PATH:~./local/bin"` among your Ubuntu paths.
 

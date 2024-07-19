@@ -4,6 +4,8 @@
 > [!IMPORTANT]
 > This script currently has limited functionality. 
 > * Only support for Ubuntu.
+>   Windows users can use WSL:
+>   https://woshub.com/install-wsl-windows-subsystem-linux/
 > * Only support for maximum one project, server and firewall.
 > * Only support for either Digital Ocean *or* Hetzner
 
